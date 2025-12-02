@@ -1,0 +1,25 @@
+/**:
+  ros__parameters:
+    # Configuration pour manette Xbox One
+    # Axes mapping
+    axis_linear: 1 # Joystick gauche vertical (avant/arrière)
+    axis_angular: 3 # Joystick droit horizontal (rotation)
+
+    # Vitesses maximales
+    scale_linear: 0.5 # Vitesse linéaire max (m/s)
+    scale_linear_turbo: 1.0 # Vitesse turbo (m/s)
+    scale_angular: 1.0 # Vitesse angulaire max (rad/s)
+    scale_angular_turbo: 1.5 # Vitesse angulaire turbo (rad/s)
+
+    # Boutons
+    enable_button: 4 # Bouton LB (Left Bumper) - doit être maintenu pour bouger
+    enable_turbo_button: 5 # Bouton RB (Right Bumper) - mode turbo
+
+    # Deadzone pour éviter les mouvements parasites
+    deadzone: 0.1
+
+    # Inverser les axes si nécessaire
+    inverted_reverse: false
+
+    # Publier sur le topic cmd_vel
+    publish_stamped_twist: false

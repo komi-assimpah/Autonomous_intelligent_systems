@@ -52,3 +52,4 @@ teleop_joy:
 # Clean build artifacts
 clean:
 	rm -rf build/ install/ log/
+	rm -rf src/build/ src/install/ src/log/

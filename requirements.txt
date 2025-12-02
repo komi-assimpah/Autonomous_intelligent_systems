@@ -1,0 +1,10 @@
+# ===== Vision par Ordinateur =====
+# YOLO v8 pour détection d'objets
+ultralytics>=8.0.0
+
+# OpenCV pour traitement d'images
+opencv-python>=4.8.0
+
+# PyTorch pour YOLO (CPU ou GPU)
+torch>=2.0.0
+torchvision>=0.15.0

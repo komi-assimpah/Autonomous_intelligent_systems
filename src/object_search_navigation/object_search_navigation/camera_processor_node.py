@@ -5,24 +5,21 @@ from cv_bridge import CvBridge
 import cv2
 import numpy as np
 
-#TODO: à comprendre/réecrire/améliorer
 class CameraProcessorNode(Node):
     def __init__(self):
         super().__init__('camera_processor_node')
         self.get_logger().info('====== Camera Processor Node started =======')
         
-        self.bridge = CvBridge()        # Bridge pour convertir ROS Image <-> OpenCV
+        self.bridge = CvBridge()
         
         self.target_width = 640
         self.target_height = 480
         self.apply_clahe = True  # Amélioration du contraste
         self.apply_denoise = False  # Réduction du bruit (coûteux en calcul)
         
-        # Statistics ??
         self.frame_count = 0
         self.processing_errors = 0
         
-        # Subscriber : images brutes de Gazebo
         self.camera_sub = self.create_subscription(
             Image,
             '/rgb_camera/image',
@@ -30,17 +27,11 @@ class CameraProcessorNode(Node):
             10
         )
         
-        # Publisher : images prétraitées pour l'IA
         self.processed_pub = self.create_publisher(
             Image,
             '/processed/camera_feed',
             10
         )
-        
-        self.get_logger().info(f'✅ Processing pipeline ready:')
-        self.get_logger().info(f'   → Target size: {self.target_width}x{self.target_height}')
-        self.get_logger().info(f'   → CLAHE: {self.apply_clahe}')
-        self.get_logger().info(f'   → Denoise: {self.apply_denoise}')
     
     
     
@@ -48,10 +39,8 @@ class CameraProcessorNode(Node):
         """Traite et republie chaque image reçue"""
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8') #?
-            
             processed_image = self.preprocess_image(cv_image)
             
-            # Convertir OpenCV → ROS Image ??pourquoi passer de ROS à OpenCV puis de OpenCV à ROS??
             processed_msg = self.bridge.cv2_to_imgmsg(processed_image, encoding='bgr8')
             processed_msg.header = msg.header  # Garder le timestamp original
             
@@ -65,18 +54,16 @@ class CameraProcessorNode(Node):
             self.processing_errors += 1
             self.get_logger().error(f'❌ Error processing image: {str(e)}')
     
-    #??GEN
+    ## code generée
     def preprocess_image(self, image):
         """
         Pipeline de prétraitement d'image pour Edge AI
         Adapté aux besoins de détection d'objets
         """
-        # 1. Redimensionnement (si nécessaire)
         height, width = image.shape[:2]
         if width != self.target_width or height != self.target_height:
             image = cv2.resize(
-                image, 
-                (self.target_width, self.target_height),
+                image, (self.target_width, self.target_height),
                 interpolation=cv2.INTER_LINEAR
             )
         
@@ -104,7 +91,7 @@ class CameraProcessorNode(Node):
         return image
     
     
-    ##?? UTILE 
+    ## pour debug
     def get_statistics(self):
         """Retourne les statistiques de traitement"""
         return {

@@ -34,9 +34,17 @@ def generate_launch_description():
         output='screen'
     )
     
+    detector = Node(
+        package='object_detector',
+        executable='simple_detector_node',
+        name='object_detector',
+        output='screen'
+    )
+    
     return LaunchDescription([
         set_turtlebot3_model,
         gazebo_launch,
         camera_processor,
         navigation,
+        detector,
     ])

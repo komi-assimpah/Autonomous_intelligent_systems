@@ -79,7 +79,7 @@ class SimpleDetectorNode(Node):
         # Remplacer par: results = model.predict(image)
         detection_probability = random.random()
         
-        if detection_probability < 0.05:
+        if detection_probability < 0.001:  # 0.1% chance (was 5%)
             return True
         
         return False

@@ -20,7 +20,7 @@ sudo apt install python3-vcstool
 
 ### 3. Import external dependencies
 ```bash
-vcs import src < dependencies.repos
+vcs import < dependencies.repos
 ```
 
 ### 4. Install ROS dependencies

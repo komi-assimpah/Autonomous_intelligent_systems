@@ -12,6 +12,8 @@ class Inference(Node):
         super().__init__('inference')
         
         self.declare_parameter('target_class', 'person')
+        self.declare_parameter('model_path', 'yolo11n-seg.pt')
+        self.declare_parameter('conf_threshold', 0.5)
         
         self.subscription = self.create_subscription(
             Image,
@@ -25,11 +27,20 @@ class Inference(Node):
             '/robot_cmd',
             10
         )
+
+        self.image_pub_ = self.create_publisher(
+            Image,
+            '/inference/image_processed',
+            10
+        )
         
         self.br = CvBridge()
 
-        self.get_logger().info('Chargement du modèle YOLOv11n...')
-        self.model = YOLO("yolo11n.pt") 
+        model_path = self.get_parameter('model_path').value
+        self.conf_threshold = float(self.get_parameter('conf_threshold').value)
+
+        self.get_logger().info(f'Chargement du modèle de segmentation: {model_path}...')
+        self.model = YOLO(model_path)
         self.get_logger().info('Modèle chargé !')
 
         self.target_object = self.get_parameter('target_class').value
@@ -44,8 +55,12 @@ class Inference(Node):
         except Exception as e:
             self.get_logger().error(f'Erreur de conversion: {e}')
             return
+        
+        object_detected, annotated_frame = self.run_inference(cv_image)
 
-        object_detected = self.run_inference(cv_image)
+        if annotated_frame is not None:
+            processed_msg = self.br.cv2_to_imgmsg(annotated_frame, encoding="bgr8")
+            self.image_pub_.publish(processed_msg)
 
         if object_detected:
             msg = String()
@@ -56,17 +71,26 @@ class Inference(Node):
     
     def run_inference(self, frame):
 
-        results = self.model(frame, verbose=False, conf=0.5) 
+        results = self.model(frame, verbose=False, conf=self.conf_threshold)
+        
+        detected = False
+        annotated_frame = frame 
 
         for r in results:
+            annotated_frame = r.plot() 
+
+            if r.masks is None:
+                continue
+
             for box in r.boxes:
                 cls_id = int(box.cls[0])
-                current_class = self.model.names[cls_id]
-                
+                current_class = self.model.names.get(cls_id, str(cls_id))
+
                 if current_class == self.target_object:
-                    return True 
-                
-        return False
+                    detected = True
+                    break 
+        
+        return detected, annotated_frame
 
 def main(args=None):
     rclpy.init(args=args)

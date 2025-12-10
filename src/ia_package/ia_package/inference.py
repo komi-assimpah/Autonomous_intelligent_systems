@@ -17,14 +17,14 @@ class Inference(Node):
         
         self.subscription = self.create_subscription(
             Image,
-            '/camera/image_raw',
+            '/processed/camera_feed',
             self.image_callback,
             10
         )
         
         self.publisher_ = self.create_publisher(
             String,
-            '/robot_cmd',
+            '/detection/command',
             10
         )
 

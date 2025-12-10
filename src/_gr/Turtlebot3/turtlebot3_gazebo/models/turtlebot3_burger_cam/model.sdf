@@ -433,7 +433,7 @@
     <joint name="camera_joint" type="fixed">
       <parent>base_link</parent>
       <child>camera_link</child>
-      <pose>0.05 0.0 0.12 0 -0.26 0</pose>
+      <pose>0.05 0.0 0.12 0 0 0</pose>
       <axis>
         <xyz>0 0 1</xyz>
       </axis>

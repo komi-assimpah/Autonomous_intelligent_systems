@@ -32,6 +32,13 @@ sim_d435i:
 		ros2 launch object_search_navigation sim_d435i.launch.py
 
 
+# Launch D435i simulation WITHOUT Gazebo GUI (faster, RViz only)
+sim_fast:
+	export LIBGL_ALWAYS_SOFTWARE=1 && \
+		. /opt/ros/*/setup.sh && \
+		. install/setup.sh && \
+		ros2 launch object_search_navigation sim_d435i.launch.py headless:=true
+
 # Launch object search nodes ONLY (requires Gazebo already running)
 search_nodes:
 	. /opt/ros/*/setup.sh && \

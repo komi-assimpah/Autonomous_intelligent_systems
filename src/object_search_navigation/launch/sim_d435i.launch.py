@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 """
 Custom Gazebo launch with D435i camera URDF.
-Uses turtlebot3_world (simpler than house) with custom D435i URDF.
+Uses turtlebot3_world with custom D435i URDF.
+
+Options:
+    headless:=true  - Run without Gazebo GUI (faster, RViz still works)
 """
 import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import AppendEnvironmentVariable, SetEnvironmentVariable
+from launch.actions import AppendEnvironmentVariable, SetEnvironmentVariable, DeclareLaunchArgument
 from launch.actions import IncludeLaunchDescription
+from launch.conditions import IfCondition, UnlessCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 
 
@@ -25,12 +29,20 @@ def generate_launch_description():
     
     launch_file_dir = os.path.join(turtlebot3_gazebo_dir, 'launch')
     
+    # Launch arguments
     use_sim_time = LaunchConfiguration('use_sim_time', default='true')
-    x_pose = LaunchConfiguration('x_pose', default='-0.5')  # Near wall inside hexagon
+    x_pose = LaunchConfiguration('x_pose', default='-0.5')
     y_pose = LaunchConfiguration('y_pose', default='0.5')
+    headless = LaunchConfiguration('headless', default='false')
+    
+    # Declare headless argument
+    declare_headless = DeclareLaunchArgument(
+        'headless',
+        default_value='false',
+        description='Run Gazebo without GUI (faster)'
+    )
     
     world = os.path.join(turtlebot3_gazebo_dir, 'worlds', 'turtlebot3_world.world')
-    # world = os.path.join(turtlebot3_gazebo_dir, 'worlds', 'turtlebot3_house.world')
     
     # Custom URDF with D435i camera
     urdf_file = os.path.join(
@@ -47,7 +59,7 @@ def generate_launch_description():
         os.path.join(turtlebot3_gazebo_dir, 'models')
     )
     
-    # Gazebo server
+    # Gazebo server (always runs)
     gzserver_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(ros_gz_sim, 'launch', 'gz_sim.launch.py')
@@ -55,12 +67,13 @@ def generate_launch_description():
         launch_arguments={'gz_args': ['-r -s -v4 ', world]}.items()
     )
     
-    # Gazebo client (GUI)
+    # Gazebo client (GUI) - only runs if NOT headless
     gzclient_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(ros_gz_sim, 'launch', 'gz_sim.launch.py')
         ),
-        launch_arguments={'gz_args': '-g -v4 '}.items()
+        launch_arguments={'gz_args': '-g -v4 '}.items(),
+        condition=UnlessCondition(headless)
     )
     
     # Robot state publisher with custom URDF
@@ -86,7 +99,7 @@ def generate_launch_description():
         }.items()
     )
     
-    # RViz2 with custom D435i config
+    # RViz2 with custom D435i config (always runs)
     object_search_nav_dir = get_package_share_directory('object_search_navigation')
     rviz_config_file = os.path.join(object_search_nav_dir, 'rviz', 'd435i.rviz')
     rviz_cmd = Node(
@@ -99,10 +112,11 @@ def generate_launch_description():
     )
     
     return LaunchDescription([
+        declare_headless,
         set_model,
         set_env_vars_resources,
         gzserver_cmd,
-        gzclient_cmd,
+        gzclient_cmd,  # Only runs if headless=false
         robot_state_publisher,
         spawn_turtlebot_cmd,
         rviz_cmd,

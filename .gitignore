@@ -211,7 +211,7 @@ install/
 log/
 build/
 
-src/_gr/
+# src/_gr/
 src/DynamixelSDK/
 src/turtlebot3/
 src/turtlebot3_msgs/

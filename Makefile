@@ -24,6 +24,14 @@ sim_house_gazebo:
 		ros2 launch turtlebot3_gazebo turtlebot3_house.launch.py
 
 
+# Launch TurtleBot3 with D435i camera (world environment + RViz)
+sim_d435i:
+	export LIBGL_ALWAYS_SOFTWARE=1 && \
+		. /opt/ros/*/setup.sh && \
+		. install/setup.sh && \
+		ros2 launch object_search_navigation sim_d435i.launch.py
+
+
 # Launch object search nodes ONLY (requires Gazebo already running)
 search_nodes:
 	. /opt/ros/*/setup.sh && \

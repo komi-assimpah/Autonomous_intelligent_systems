@@ -45,27 +45,11 @@ search_nodes:
 		. install/setup.sh && \
 		ros2 launch object_search_navigation search_nodes.launch.py
 
-
-# Launch complete search mission (Gazebo + nodes together)
-search_full:
-	. /opt/ros/*/setup.sh && \
-		. install/setup.sh && \
-		export TURTLEBOT3_MODEL=burger && \
-		ros2 launch object_search_navigation search_mission.launch.py
-
-
 # Keyboard teleoperation
 teleop:
 	. /opt/ros/*/setup.sh && \
 		ros2 run teleop_twist_keyboard teleop_twist_keyboard \
 			--ros-args --remap cmd_vel:=/cmd_vel
-
-
-# Autonomous exploration with FSM (alternative to teleop for SLAM)
-fsm_explore:
-	. /opt/ros/*/setup.sh && \
-		. install/setup.sh && \
-		ros2 run turtlebot3_fsm fsm_node
 
 
 # Launch Cartographer SLAM only (requires Gazebo already running)
@@ -75,23 +59,13 @@ slam:
 		export TURTLEBOT3_MODEL=burger && \
 		ros2 launch turtlebot3_cartographer cartographer.launch.py use_sim_time:=true
 
-
-# MODE 1: SLAM + FSM exploration + Detection (unknown environment)
+# SLAM + autonomous exploration + Detection (unknown environment)
 # Requires Gazebo running. Builds map while searching for object.
 slam_search:
 	. /opt/ros/*/setup.sh && \
 		. install/setup.sh && \
 		export TURTLEBOT3_MODEL=burger && \
 		ros2 launch object_search_navigation slam_search.launch.py
-
-# MODE 2: Navigation with pre-recorded map
-# Usage: make nav2 MAP=maps/my_map.yaml
-MAP ?= maps/my_map.yaml
-nav2:
-	. /opt/ros/*/setup.sh && \
-		. install/setup.sh && \
-		export TURTLEBOT3_MODEL=burger && \
-		ros2 launch turtlebot3_navigation2 navigation2.launch.py map:=$(MAP) use_sim_time:=true
 
 # Save the map after SLAM (run while slam is still running)
 map_save:

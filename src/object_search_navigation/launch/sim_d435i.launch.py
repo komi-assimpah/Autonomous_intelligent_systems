@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-"""
-Custom Gazebo launch with D435i camera URDF.
-Uses turtlebot3_world with custom D435i URDF.
-
-Options:
-    headless:=true  - Run without Gazebo GUI (faster, RViz still works)
-"""
 import os
 
 from ament_index_python.packages import get_package_share_directory
@@ -19,10 +11,12 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    # Set TurtleBot3 model
-    set_model = SetEnvironmentVariable(name='TURTLEBOT3_MODEL', value='burger')
+    set_model = SetEnvironmentVariable(
+        name='TURTLEBOT3_MODEL', 
+        value='burger'
+    )
     
-    # Paths
+    # Path to TurtleBot3 Gazebo launch file
     turtlebot3_gazebo_dir = get_package_share_directory('turtlebot3_gazebo')
     turtlebot3_descriptions_dir = get_package_share_directory('turtlebot3_descriptions')
     ros_gz_sim = get_package_share_directory('ros_gz_sim')
@@ -35,7 +29,6 @@ def generate_launch_description():
     y_pose = LaunchConfiguration('y_pose', default='0.5')
     headless = LaunchConfiguration('headless', default='false')
     
-    # Declare headless argument
     declare_headless = DeclareLaunchArgument(
         'headless',
         default_value='false',
@@ -44,12 +37,10 @@ def generate_launch_description():
     
     world = os.path.join(turtlebot3_gazebo_dir, 'worlds', 'turtlebot3_world.world')
     
-    # Custom URDF with D435i camera
     urdf_file = os.path.join(
         turtlebot3_descriptions_dir, 'urdf', 'turtlebot3_burger_d435i.urdf'
     )
     
-    # Read URDF content
     with open(urdf_file, 'r') as f:
         robot_description = f.read()
     
@@ -76,7 +67,6 @@ def generate_launch_description():
         condition=UnlessCondition(headless)
     )
     
-    # Robot state publisher with custom URDF
     robot_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -88,7 +78,6 @@ def generate_launch_description():
         }]
     )
     
-    # Spawn robot
     spawn_turtlebot_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(launch_file_dir, 'spawn_turtlebot3.launch.py')

@@ -1,8 +1,8 @@
 """
-Launch file for SLAM + FSM exploration + Object Detection.
+Launch file for SLAM + Autonomous exploration + Object Detection.
 Use this in an unknown environment to:
 1. Build a map with Cartographer
-2. Explore autonomously with FSM
+2. Explore autonomously
 3. Detect the target object
 
 Usage: ros2 launch object_search_navigation slam_search.launch.py
@@ -33,7 +33,6 @@ def generate_launch_description():
         output='screen'
     )
     
-    # Navigation (FSM exploration)
     navigation = Node(
         package='object_search_navigation',
         executable='navigation_node',

@@ -36,14 +36,17 @@ class NavigationNode(Node):
         super().__init__('navigation_node')
         self.get_logger().info('🚗 Smart Navigation Node started')
 
-        # === Mission State ===
         self.target_found = False
 
         # === FSM States ===
         self.STOP = 0
         self.TURN = 1
         self.FORWARD = 2
+        self.ORIENT = 3  # Turn towards detected object
         self.state = self.STOP
+        
+        # === Orientation towards target ===
+        self.target_offset = 0.0  # Horizontal offset to turn towards object
 
         # === Speed Parameters ===
         self.SPEED_LINEAR_MAX = 0.3    # Max forward speed (m/s)
@@ -109,13 +112,32 @@ class NavigationNode(Node):
     def detection_callback(self, msg):
         """Handle detection commands from object_detector"""
         if msg.data == "STOP":
-            self.get_logger().info('🎯 TARGET FOUND! Stopping mission.')
+            # Object is centered - final stop
             self.target_found = True
-            self.emergency_stop()
+            self.state = self.STOP
+            for _ in range(5):
+                self.cmd_vel_pub.publish(Twist())
+            self.get_logger().info('🛑 Object centered - Mission complete!')
+        
+        elif msg.data.startswith("ORIENT:"):
+            # Continuous orientation - update offset each frame
+            try:
+                offset = float(msg.data.split(":")[1])
+            except:
+                return
+            
+            # Update offset for control_cycle to use
+            self.target_offset = offset
+            self.state = self.ORIENT
+            
+            if not self.target_found:
+                self.target_found = True
+                self.get_logger().info(f'🎯 TARGET FOUND! Orienting... (offset: {offset:.2f})')
 
     def emergency_stop(self):
-        self.cmd_vel_pub.publish(Twist())
-        self.get_logger().info('🛑 Robot stopped - Mission complete!')
+        # Publish stop command multiple times for reliability
+        for _ in range(3):
+            self.cmd_vel_pub.publish(Twist())
 
     def find_best_direction(self):
         """
@@ -184,6 +206,19 @@ class NavigationNode(Node):
             return self.SPEED_LINEAR_MIN + ratio * (self.SPEED_LINEAR_MAX - self.SPEED_LINEAR_MIN)
 
     def control_cycle(self):
+        # Handle ORIENT state separately (even after target_found)
+        if self.state == self.ORIENT:
+            # Turn towards the detected object based on offset
+            # offset is continuously updated by detection_callback
+            # offset: -1 (left) to +1 (right)
+            # Negative offset = object is left = turn left (positive angular.z)
+            angular_speed = -self.target_offset * 0.8  # Proportional control
+            
+            twist = Twist()
+            twist.angular.z = angular_speed
+            self.cmd_vel_pub.publish(twist)
+            return  # Wait for STOP command from inference
+        
         if self.target_found:
             return
         

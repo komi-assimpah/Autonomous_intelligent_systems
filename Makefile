@@ -100,8 +100,12 @@ map_save:
 
 # Kill all ROS/Gazebo processes
 kill:
-	-killall -9 ign gzserver gzclient ruby 2>/dev/null
-	@echo "Gazebo processes killed. Use Ctrl+C to stop ROS nodes."
+	-killall -9 ign gzserver gzclient ruby rviz2 2>/dev/null
+	-pkill -9 -f "ros2 run object_search_navigation" 2>/dev/null
+	-pkill -9 -f "ros2 run ia_package" 2>/dev/null
+	-pkill -9 -f "ros2 run object_detector" 2>/dev/null
+	-pkill -9 -f "parameter_bridge" 2>/dev/null
+	@echo "✅ All Gazebo, RViz, and project nodes killed."
 
 clean:
 	rm -rf build/ install/ log/

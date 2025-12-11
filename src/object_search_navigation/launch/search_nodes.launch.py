@@ -20,6 +20,8 @@ def generate_launch_description():
     declare_target_class = DeclareLaunchArgument(
         'target_class',
         default_value='dog',
+        # default_value='cat',
+
         description='Target object class to search for (e.g., dog, cat, person)'
     )
     

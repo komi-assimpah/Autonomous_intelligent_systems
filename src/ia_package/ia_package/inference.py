@@ -19,12 +19,10 @@ class Inference(Node):
         self.declare_parameter('model_path', 'yolo11n-seg.pt')
         self.declare_parameter('conf_threshold', 0.5)
         
-        # Publishers
         self.publisher_ = self.create_publisher(String, '/detection/command', 10)
         self.image_pub_ = self.create_publisher(Image, '/inference/image_processed', 10)
         self.position_pub_ = self.create_publisher(PointStamped, '/object/position', 10)
         
-        # Image subscription
         self.subscription = self.create_subscription(
             Image, '/processed/camera_feed', self.image_callback, 10)
         
@@ -51,6 +49,7 @@ class Inference(Node):
         self.image_height = 480
         
         self.get_logger().info(f'Classe cible: {self.target_object}')
+
 
     def pointcloud_callback(self, msg):
         """Store latest pointcloud for 3D position extraction"""
@@ -105,7 +104,6 @@ class Inference(Node):
         
         object_detected, annotated_frame, bbox = self.run_inference(cv_image)
 
-        # Always publish annotated frame
         if annotated_frame is not None:
             processed_msg = self.br.cv2_to_imgmsg(annotated_frame, encoding="bgr8")
             self.image_pub_.publish(processed_msg)
@@ -130,7 +128,6 @@ class Inference(Node):
                 
                 self.get_logger().info('🛑 Objet centré - Robot arrêté!')
                 
-                # Extract and publish 3D position
                 pos_3d = self.get_3d_position(bbox[0], bbox[1])
                 if pos_3d:
                     x, y, z = pos_3d
@@ -144,11 +141,9 @@ class Inference(Node):
                     point_msg.point.z = float(z)
                     self.position_pub_.publish(point_msg)
                 
-                # Disable further processing
                 self.target_found = True
-                self.subscription = None  # Unsubscribe
+                self.subscription = None
             else:
-                # Still need to orient - send ORIENT with offset
                 orient_msg = String()
                 orient_msg.data = f"ORIENT:{offset:.3f}"
                 self.publisher_.publish(orient_msg)

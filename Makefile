@@ -59,8 +59,21 @@ slam:
 		export TURTLEBOT3_MODEL=burger && \
 		ros2 launch turtlebot3_cartographer cartographer.launch.py use_sim_time:=true
 
-# SLAM + autonomous exploration + Detection (unknown environment)
-# Requires Gazebo running. Builds map while searching for object.
+# SLAM + autonomous exploration (random, for quick map)
+slam_explore:
+	. /opt/ros/*/setup.sh && \
+		. install/setup.sh && \
+		export TURTLEBOT3_MODEL=burger && \
+		ros2 launch object_search_navigation slam_explore.launch.py
+
+# SLAM + wall-following (systematic, for precise map)
+slam_mapping:
+	. /opt/ros/*/setup.sh && \
+		. install/setup.sh && \
+		export TURTLEBOT3_MODEL=burger && \
+		ros2 launch object_search_navigation slam_mapping.launch.py
+
+# SLAM + autonomous exploration + YOLO Detection (unknown environment)
 slam_search:
 	. /opt/ros/*/setup.sh && \
 		. install/setup.sh && \

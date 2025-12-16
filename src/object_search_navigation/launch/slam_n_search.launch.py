@@ -5,7 +5,7 @@ Use this in an unknown environment to:
 2. Explore autonomously
 3. Detect the target object with YOLO
 
-Usage: ros2 launch object_search_navigation slam_search.launch.py target_class:=dog
+Usage: ros2 launch object_search_navigation slam_n_search.launch.py target_class:=dog
 """
 import os
 from launch import LaunchDescription

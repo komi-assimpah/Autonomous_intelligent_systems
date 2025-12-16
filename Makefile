@@ -66,19 +66,15 @@ slam_explore:
 		export TURTLEBOT3_MODEL=burger && \
 		ros2 launch object_search_navigation slam_explore.launch.py
 
-# SLAM + wall-following (systematic, for precise map)
-slam_mapping:
-	. /opt/ros/*/setup.sh && \
-		. install/setup.sh && \
-		export TURTLEBOT3_MODEL=burger && \
-		ros2 launch object_search_navigation slam_mapping.launch.py
+# TODO: SLAM + wall-following (systematic, for precise map)
+
 
 # SLAM + autonomous exploration + YOLO Detection (unknown environment)
 slam_search:
 	. /opt/ros/*/setup.sh && \
 		. install/setup.sh && \
 		export TURTLEBOT3_MODEL=burger && \
-		ros2 launch object_search_navigation slam_search.launch.py
+		ros2 launch object_search_navigation slam_n_search.launch.py
 
 # Save the map after SLAM (run while slam is still running)
 map_save:

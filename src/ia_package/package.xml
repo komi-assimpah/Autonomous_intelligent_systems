@@ -15,6 +15,9 @@
   <depend>cv_bridge</depend>
   <depend>opencv-python</depend>
   <depend>ultralytics</depend>
+  <exec_depend>python3-matplotlib</exec_depend>
+  <exec_depend>python3-scipy</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

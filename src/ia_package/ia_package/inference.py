@@ -4,6 +4,7 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import String
 from cv_bridge import CvBridge
 import cv2
+import numpy as np
 from ultralytics import YOLO
 
 class Inference(Node):
@@ -11,13 +12,13 @@ class Inference(Node):
     def __init__(self):
         super().__init__('inference')
         
-        self.declare_parameter('target_class', 'person')
+        self.declare_parameter('target_class', 'dog')
         self.declare_parameter('model_path', 'yolo11n-seg.pt')
         self.declare_parameter('conf_threshold', 0.5)
         
         self.subscription = self.create_subscription(
             Image,
-            '/camera/image_raw',
+            '/processed/camera_feed',
             self.image_callback,
             10
         )
@@ -31,6 +32,12 @@ class Inference(Node):
         self.image_pub_ = self.create_publisher(
             Image,
             '/inference/image_processed',
+            10
+        )
+        
+        self.mask_pub_ = self.create_publisher(
+            Image,
+            '/inference/mask',
             10
         )
         
@@ -70,24 +77,38 @@ class Inference(Node):
 
     
     def run_inference(self, frame):
-
         results = self.model(frame, verbose=False, conf=self.conf_threshold)
         
         detected = False
         annotated_frame = frame 
+        mask_msg = None
 
         for r in results:
             annotated_frame = r.plot() 
-
-            if r.masks is None:
+            
+            if r.masks is None or r.boxes is None:
                 continue
 
-            for box in r.boxes:
+            for i, box in enumerate(r.boxes):
                 cls_id = int(box.cls[0])
                 current_class = self.model.names.get(cls_id, str(cls_id))
 
                 if current_class == self.target_object:
                     detected = True
+                    
+                    raw_mask = r.masks.data[i].cpu().numpy()
+                    
+                    binary_mask = (raw_mask * 255).astype('uint8')
+                    
+                    if binary_mask.shape[:2] != frame.shape[:2]:
+                        binary_mask = cv2.resize(binary_mask, (frame.shape[1], frame.shape[0]), interpolation=cv2.INTER_NEAREST)
+
+                    try:
+                        mask_msg = self.br.cv2_to_imgmsg(binary_mask, encoding="mono8")
+                        self.mask_pub_.publish(mask_msg)
+                    except Exception as e:
+                        self.get_logger().error(f'Failed to publish mask: {e}')
+                    
                     break 
         
         return detected, annotated_frame

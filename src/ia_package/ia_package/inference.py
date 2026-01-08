@@ -19,9 +19,16 @@ class Inference(Node):
         self.declare_parameter('model_path', 'yolo11n-seg.pt')
         self.declare_parameter('conf_threshold', 0.5)
         
+        # Publishers
         self.publisher_ = self.create_publisher(String, '/detection/command', 10)
         self.image_pub_ = self.create_publisher(Image, '/inference/image_processed', 10)
-        self.position_pub_ = self.create_publisher(PointStamped, '/object/position', 10)
+        self.target_position_pub_ = self.create_publisher(PointStamped, '/object/position', 10)
+        
+        # NEW: Publishers for segmentation mask and class name
+        self.mask_pub_ = self.create_publisher(Image, '/object/segmentation_mask', 10)
+        self.class_pub_ = self.create_publisher(String, '/object/class_name', 10)
+
+
         
         self.subscription = self.create_subscription(
             Image, '/processed/camera_feed', self.image_callback, 10)
@@ -102,7 +109,7 @@ class Inference(Node):
             self.get_logger().error(f'Erreur de conversion: {e}')
             return
         
-        object_detected, annotated_frame, bbox = self.run_inference(cv_image)
+        object_detected, annotated_frame, bbox, mask = self.run_inference(cv_image)
 
         if annotated_frame is not None:
             processed_msg = self.br.cv2_to_imgmsg(annotated_frame, encoding="bgr8")
@@ -118,6 +125,18 @@ class Inference(Node):
                 self.target_found = True
                 self.get_logger().warn(f'🎯 {self.target_object.upper()} DÉTECTÉ !')
                 self.get_logger().info(f'📍 Position 2D: ({bbox[0]}, {bbox[1]}) pixels')
+            
+            # Publish segmentation mask if available
+            if mask is not None:
+                mask_msg = self.br.cv2_to_imgmsg(mask, encoding="mono8")
+                mask_msg.header.stamp = self.get_clock().now().to_msg()
+                mask_msg.header.frame_id = 'camera_link'
+                self.mask_pub_.publish(mask_msg)
+                
+                # Publish class name
+                class_msg = String()
+                class_msg.data = self.target_object
+                self.class_pub_.publish(class_msg)
             
             # Check if centered (within 10% of center)
             if abs(offset) < 0.1:
@@ -139,10 +158,7 @@ class Inference(Node):
                     point_msg.point.x = float(x)
                     point_msg.point.y = float(y)
                     point_msg.point.z = float(z)
-                    self.position_pub_.publish(point_msg)
-                
-                self.target_found = True
-                self.subscription = None
+                    self.target_position_pub_.publish(point_msg)
             else:
                 orient_msg = String()
                 orient_msg.data = f"ORIENT:{offset:.3f}"
@@ -152,23 +168,29 @@ class Inference(Node):
                 self.get_logger().info(f'🔄 Orientation: offset={offset:.2f} → {direction}')
 
     def run_inference(self, frame):
+        """
+        Run YOLO segmentation inference on frame.
+        
+        Returns:
+            detected: bool - True if target object found
+            annotated_frame: np.array - Frame with annotations
+            bbox_center: tuple(int, int) - Center of bounding box (u, v)
+            mask: np.array or None - Binary segmentation mask for target object
+        """
         results = self.model(frame, verbose=False, conf=self.conf_threshold)
         
         detected = False
         annotated_frame = frame 
         bbox_center = (0, 0)
+        target_mask = None
 
         for r in results:
             annotated_frame = r.plot() 
-
-            # TODO: Uncomment for production with real 3D objects
-            # if r.masks is None:
-            #     continue
             
             if r.boxes is None or len(r.boxes) == 0:
                 continue
 
-            for box in r.boxes:
+            for idx, box in enumerate(r.boxes):
                 cls_id = int(box.cls[0])
                 current_class = self.model.names.get(cls_id, str(cls_id))
 
@@ -179,9 +201,26 @@ class Inference(Node):
                     center_v = int((y1 + y2) / 2)
                     bbox_center = (center_u, center_v)
                     detected = True
+                    
+                    # Extract segmentation mask for this object
+                    if r.masks is not None and idx < len(r.masks):
+                        # Get mask data (normalized 0-1, same size as inference)
+                        mask_data = r.masks.data[idx].cpu().numpy()
+                        # Resize to original image size
+                        target_mask = cv2.resize(
+                            mask_data, 
+                            (frame.shape[1], frame.shape[0]),
+                            interpolation=cv2.INTER_NEAREST
+                        )
+                        # Convert to binary uint8 (0 or 255)
+                        target_mask = (target_mask > 0.5).astype(np.uint8) * 255
+                        
+                        self.get_logger().info(
+                            f'🎭 Masque segmentation: {np.sum(target_mask > 0)} pixels de {current_class}'
+                        )
                     break 
         
-        return detected, annotated_frame, bbox_center
+        return detected, annotated_frame, bbox_center, target_mask
 
 
 def main(args=None):

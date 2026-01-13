@@ -11,7 +11,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=['setuptools', 'ultralytics', 'matplotlib', 'scipy', 'numpy', 'sensor_msgs_py', 'opencv-python'],
+    install_requires=['setuptools', 'ultralytics', 'matplotlib', 'scipy>=1.12', 'numpy', 'sensor_msgs_py', 'opencv-python'],
     zip_safe=True,
     maintainer='yanis',
     maintainer_email='yanis@todo.todo',

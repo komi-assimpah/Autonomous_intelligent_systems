@@ -83,34 +83,29 @@ class Inference(Node):
         annotated_frame = frame 
         mask_msg = None
 
-        for r in results:
-            annotated_frame = r.plot() 
-            
-            if r.masks is None or r.boxes is None:
-                continue
+        if results[0].masks is not None and results[0].boxes is not None:
+             combined_mask = np.zeros((frame.shape[0], frame.shape[1]), dtype=np.uint8)
+             
+             for i, box in enumerate(results[0].boxes):
+                 cls_id = int(box.cls[0])
+                 mask_val = cls_id + 1
+                 
+                 raw_mask = results[0].masks.data[i].cpu().numpy()
+                 
+                 if raw_mask.shape[:2] != (frame.shape[0], frame.shape[1]):
+                     raw_mask = cv2.resize(raw_mask, (frame.shape[1], frame.shape[0]), interpolation=cv2.INTER_NEAREST)
+                 
+                 combined_mask[raw_mask > 0.5] = mask_val
+                 detected = True
 
-            for i, box in enumerate(r.boxes):
-                cls_id = int(box.cls[0])
-                current_class = self.model.names.get(cls_id, str(cls_id))
-
-                if current_class == self.target_object:
-                    detected = True
-                    
-                    raw_mask = r.masks.data[i].cpu().numpy()
-                    
-                    binary_mask = (raw_mask * 255).astype('uint8')
-                    
-                    if binary_mask.shape[:2] != frame.shape[:2]:
-                        binary_mask = cv2.resize(binary_mask, (frame.shape[1], frame.shape[0]), interpolation=cv2.INTER_NEAREST)
-
-                    try:
-                        mask_msg = self.br.cv2_to_imgmsg(binary_mask, encoding="mono8")
-                        self.mask_pub_.publish(mask_msg)
-                    except Exception as e:
-                        self.get_logger().error(f'Failed to publish mask: {e}')
-                    
-                    break 
+             try:
+                 mask_msg = self.br.cv2_to_imgmsg(combined_mask, encoding="mono8")
+                 self.mask_pub_.publish(mask_msg)
+             except Exception as e:
+                 self.get_logger().error(f'Failed to publish mask: {e}')
         
+        annotated_frame = results[0].plot()
+
         return detected, annotated_frame
 
 def main(args=None):

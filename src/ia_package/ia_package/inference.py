@@ -222,11 +222,11 @@ class Inference(Node):
                     self.target_position_pub_.publish(point_msg)
             else:
                 orient_msg = String()
-                orient_msg.data = f"ORIENT:{offset:.3f}"
+                orient_msg.data = f"CADRAGE:{offset:.3f}"
                 self.publisher_.publish(orient_msg)
                 
                 direction = "gauche" if offset < 0 else "droite"
-                self.get_logger().info(f'🔄 Orientation: offset={offset:.2f} → {direction}')
+                self.get_logger().info(f'🔄 Cadrage: offset={offset:.2f} → {direction}')
 
     def run_inference(self, frame):
         """

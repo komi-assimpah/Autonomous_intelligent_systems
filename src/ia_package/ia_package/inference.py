@@ -15,7 +15,7 @@ class Inference(Node):
     def __init__(self):
         super().__init__('inference')
         
-        self.declare_parameter('target_class', 'person')
+        self.declare_parameter('target_class', 'dog')
         self.declare_parameter('model_path', 'yolo11n-seg.pt')
         self.declare_parameter('conf_threshold', 0.5)
         
@@ -63,7 +63,7 @@ class Inference(Node):
         self.latest_pointcloud = msg
     
     def get_3d_position(self, u, v):
-        """Extract 3D position from PointCloud at pixel (u, v)"""
+        """Extract 3D position from PointCloud at pixel (u, v) with neighborhood search"""
         if self.latest_pointcloud is None:
             return None
         
@@ -71,30 +71,91 @@ class Inference(Node):
             cloud_width = self.latest_pointcloud.width
             cloud_height = self.latest_pointcloud.height
             
-            # Scale pixel coordinates to pointcloud dimensions
+            # Scale pixel coordinates
             pc_u = int(u * cloud_width / self.image_width)
             pc_v = int(v * cloud_height / self.image_height)
             
-            # Clamp to valid range
-            pc_u = max(0, min(pc_u, cloud_width - 1))
-            pc_v = max(0, min(pc_v, cloud_height - 1))
+            # Define search kernel (e.g., 5x5 window) to find valid depth
+            kernel_size = 5
+            half_kernel = kernel_size // 2
             
-            # Calculate point index for organized pointcloud
-            point_index = pc_v * cloud_width + pc_u
+            valid_points = []
             
-            # Read all points and get the one we need
+            for dv in range(-half_kernel, half_kernel + 1):
+                for du in range(-half_kernel, half_kernel + 1):
+                    uu = max(0, min(pc_u + du, cloud_width - 1))
+                    vv = max(0, min(pc_v + dv, cloud_height - 1))
+                    
+                    point_index = vv * cloud_width + uu
+                    
+                    # We need to act quickly, so we read just this point generator-style or full read?
+                    # pc2.read_points yields generators. Doing this in nested loop might be slow if we read full cloud each time.
+                    # Optimization: Read a small crop? or just iterate generator?
+                    # Better: Read all points once? No, too slow (300k points).
+                    # Actually read_points with uvs is not supported directly in standard read_points unless we pass uvs.
+                    # But sensor_msgs_py.point_cloud2.read_points_numpy is faster if available.
+                    # Let's keep it simple: Read just the specific index is tricky with read_points as it iterates.
+                    # Wait, read_points yields ALL points. We can't index directly efficiently without reading all previous.
+                    # Optimization: Use read_points_numpy results if possible, or just be careful.
+                    # Actually: The previous code was iterating `enumerate(points_gen)` until index.
+                    # That is VERY slow if index is late.
+                    pass
+            
+            # Efficient approach: Read all points once into a numpy array (structured).
+            # This is much faster for lookup.
+            # However, converting 300k points might be heavy at 30Hz.
+            # Let's try to just be robust with the single point first, or check the loop logic. 
+            # The previous code: `for i, point in enumerate(points_gen): if i == point_index: ...`
+            # This is O(N) for every pixel lookup! And since we only do it ONCE when stopped, maybe acceptable.
+            
+            # Let's use read_points with uvs option? No, standard read_points doesn't have it.
+            # But we can assume organized cloud.
+            
+            # Let's just fix the infinite/nan check for now, and maybe average a few points if possible.
+            # Since we only call this when robot stops (rarely), we can afford a bit of cost.
+            
             points_gen = pc2.read_points(
                 self.latest_pointcloud, 
                 field_names=('x', 'y', 'z'),
                 skip_nans=False
             )
+             
+            # Optimization: We only want points near (pc_u, pc_v).
+            # Reading the whole generator to find one index is inefficient but let's stick to logic that works.
+            # To search neighborhood, we need multiple points.
             
-            for i, point in enumerate(points_gen):
-                if i == point_index:
-                    x, y, z = point[0], point[1], point[2]
-                    if not np.isnan(x) and not np.isnan(y) and not np.isnan(z):
-                        return (float(x), float(y), float(z))
-                    break
+            # Better: convert full cloud to numpy ONLY if we need (when checking).
+            # It might be 50ms.
+            
+            # Let's try a simpler robust check:
+            # We want (x,y,z) at `point_index`.
+            # Note: `read_points` iterates in row-major order.
+            
+            # We can skip to the approximate location? No.
+            
+            # Let's rewrite to use `read_points_list` which reads all.
+            points_list = list(points_gen) # heavy?
+            
+            # Window search
+            target_depths = []
+            
+            for dv in range(-half_kernel, half_kernel + 1):
+                for du in range(-half_kernel, half_kernel + 1):
+                    uu = max(0, min(pc_u + du, cloud_width - 1))
+                    vv = max(0, min(pc_v + dv, cloud_height - 1))
+                    idx = vv * cloud_width + uu
+                    
+                    if idx < len(points_list):
+                        x, y, z = points_list[idx]
+                        if not np.isnan(x) and not np.isinf(x) and \
+                           not np.isnan(y) and not np.isinf(y) and \
+                           not np.isnan(z) and not np.isinf(z):
+                             target_depths.append((x, y, z))
+
+            if target_depths:
+                # Return median or average to be robust
+                median_pt = np.median(target_depths, axis=0)
+                return tuple(median_pt)
                     
         except Exception as e:
             self.get_logger().error(f'Error extracting 3D position: {e}')

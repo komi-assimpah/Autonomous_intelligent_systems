@@ -90,7 +90,7 @@ def generate_launch_description():
     
     # RViz2 with custom D435i config (always runs)
     object_search_nav_dir = get_package_share_directory('object_search_navigation')
-    rviz_config_file = os.path.join(object_search_nav_dir, 'rviz', 'd435i.rviz')
+    rviz_config_file = os.path.join(object_search_nav_dir, 'rviz', 'search_with_map.rviz')
     rviz_cmd = Node(
         package='rviz2',
         executable='rviz2',
@@ -98,6 +98,45 @@ def generate_launch_description():
         output='screen',
         parameters=[{'use_sim_time': use_sim_time}],
         arguments=['-d', rviz_config_file]
+    )
+    
+    
+    # === NAV2 MAP SERVER & AMCL ===
+    map_file = os.path.join(
+        get_package_share_directory('turtlebot3_navigation2'),
+        'map',
+        'map.yaml'
+    )
+
+    nav2_map_server = Node(
+        package='nav2_map_server',
+        executable='map_server',
+        name='map_server',
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}, 
+                    {'yaml_filename': map_file}]
+    )
+
+    nav2_amcl = Node(
+        package='nav2_amcl',
+        executable='amcl',
+        name='amcl',
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time},
+                    {'set_initial_pose': True},
+                    {'initial_pose.x': x_pose},
+                    {'initial_pose.y': y_pose},
+                    {'initial_pose.yaw': 0.0}]
+    )
+
+    nav2_lifecycle_manager = Node(
+        package='nav2_lifecycle_manager',
+        executable='lifecycle_manager',
+        name='lifecycle_manager_localization',
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time},
+                    {'autostart': True},
+                    {'node_names': ['map_server', 'amcl']}]
     )
     
     return LaunchDescription([
@@ -108,5 +147,8 @@ def generate_launch_description():
         gzclient_cmd,  # Only runs if headless=false
         robot_state_publisher,
         spawn_turtlebot_cmd,
+        nav2_map_server,
+        nav2_amcl,
+        nav2_lifecycle_manager,
         rviz_cmd,
     ])

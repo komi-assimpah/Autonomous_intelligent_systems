@@ -9,28 +9,13 @@ from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 
 from object_search_navigation.diffdrive import wheels_to_twist
 import object_search_navigation.lidar_utils as lu
 
 
 class NavigationNode(Node):
-    """
-    Smart Navigation node with FSM for autonomous exploration.
-    Features:
-    - Adaptive speed based on obstacle distance
-    - Prefers exploring new directions
-    - Smooth turning with look-ahead
-    - Camera-aware exploration (prefers forward-facing directions)
-    
-    States:
-    - STOP: Find best direction to explore
-    - TURN: Rotate towards target angle
-    - FORWARD: Move forward with adaptive speed
-    
-    Stops completely when /detection/command receives "STOP"
-    """
 
     def __init__(self):
         super().__init__('navigation_node')
@@ -39,11 +24,13 @@ class NavigationNode(Node):
         self.target_found = False
 
         # === FSM States ===
+        self.WAITING = -1 # Waiting for orchestrator start signal
         self.STOP = 0
         self.TURN = 1
         self.FORWARD = 2
         self.ORIENT = 3  # Turn towards detected object
-        self.state = self.STOP
+        
+        self.state = self.WAITING
         
         # === Orientation towards target ===
         self.target_offset = 0.0  # Horizontal offset to turn towards object
@@ -84,8 +71,9 @@ class NavigationNode(Node):
         self.odom_sub = self.create_subscription(
             Odometry, '/odom', self.odom_callback, 10)
         
-        self.detection_sub = self.create_subscription(
-            String, '/detection/command', self.detection_callback, 10)
+        # Centralized Command Subscription
+        self.command_sub = self.create_subscription(
+            String, '/navigation/command', self.command_callback, 10)
 
         # === Control Loop Timer (20 Hz) ===
         self.timer = self.create_timer(0.05, self.control_cycle)
@@ -93,12 +81,39 @@ class NavigationNode(Node):
         # === Graceful shutdown ===
         signal.signal(signal.SIGINT, self.signal_handler)
 
-        self.get_logger().info('✅ Smart exploration active - searching for target')
+        self.get_logger().info('✅ Smart exploration node ready - WAITING for command...')
 
     def signal_handler(self, signum, frame):
         self.get_logger().info("Ctrl+C detected, stopping robot...")
         self.emergency_stop()
         raise SystemExit
+        
+    def command_callback(self, msg):
+        """Handle centralized commands from orchestrator"""
+        command = msg.data
+        
+        if command == "START":
+            if self.state == self.WAITING:
+                self.state = self.STOP
+                self.get_logger().info('🚀 START command received! Beginning exploration...')
+                
+        elif command == "STOP":
+            self.target_found = True
+            self.state = self.STOP
+            for _ in range(5):
+                self.cmd_vel_pub.publish(Twist())
+            self.get_logger().info('🛑 STOP command received - Mission complete!')
+            
+        elif command.startswith("ORIENT:"):
+            try:
+                offset = float(command.split(":")[1])
+                self.target_offset = offset
+                self.state = self.ORIENT
+                if not self.target_found:
+                    self.target_found = True # Temporarily found, actually just orienting
+                    self.get_logger().info(f'🎯 ORIENT command received (offset: {offset:.2f})')
+            except:
+                pass
 
     def scan_callback(self, msg):
         self.last_scan = msg
@@ -109,30 +124,7 @@ class NavigationNode(Node):
         cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
         self.current_yaw = math.atan2(siny_cosp, cosy_cosp)
 
-    def detection_callback(self, msg):
-        """Handle detection commands from object_detector"""
-        if msg.data == "STOP":
-            # Object is centered - final stop
-            self.target_found = True
-            self.state = self.STOP
-            for _ in range(5):
-                self.cmd_vel_pub.publish(Twist())
-            self.get_logger().info('🛑 Object centered - Mission complete!')
-        
-        elif msg.data.startswith("ORIENT:"):
-            # Continuous orientation - update offset each frame
-            try:
-                offset = float(msg.data.split(":")[1])
-            except:
-                return
-            
-            # Update offset for control_cycle to use
-            self.target_offset = offset
-            self.state = self.ORIENT
-            
-            if not self.target_found:
-                self.target_found = True
-                self.get_logger().info(f'🎯 TARGET FOUND! Orienting... (offset: {offset:.2f})')
+
 
     def emergency_stop(self):
         # Publish stop command multiple times for reliability
@@ -206,6 +198,9 @@ class NavigationNode(Node):
             return self.SPEED_LINEAR_MIN + ratio * (self.SPEED_LINEAR_MAX - self.SPEED_LINEAR_MIN)
 
     def control_cycle(self):
+        if self.state == self.WAITING:
+            return
+
         # Handle ORIENT state separately (even after target_found)
         if self.state == self.ORIENT:
             # Turn towards the detected object based on offset

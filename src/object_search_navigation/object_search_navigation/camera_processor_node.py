@@ -48,7 +48,7 @@ class CameraProcessorNode(Node):
             
             self.frame_count += 1
             if self.frame_count % 100 == 0:
-                self.get_logger().info(f'📊 Processed {self.frame_count} frames')
+                self.get_logger().info(f' Processed {self.frame_count} frames')
         
         except Exception as e:
             self.processing_errors += 1

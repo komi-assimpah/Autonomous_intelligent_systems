@@ -87,54 +87,16 @@ class Inference(Node):
                     vv = max(0, min(pc_v + dv, cloud_height - 1))
                     
                     point_index = vv * cloud_width + uu
-                    
-                    # We need to act quickly, so we read just this point generator-style or full read?
-                    # pc2.read_points yields generators. Doing this in nested loop might be slow if we read full cloud each time.
-                    # Optimization: Read a small crop? or just iterate generator?
-                    # Better: Read all points once? No, too slow (300k points).
-                    # Actually read_points with uvs is not supported directly in standard read_points unless we pass uvs.
-                    # But sensor_msgs_py.point_cloud2.read_points_numpy is faster if available.
-                    # Let's keep it simple: Read just the specific index is tricky with read_points as it iterates.
-                    # Wait, read_points yields ALL points. We can't index directly efficiently without reading all previous.
-                    # Optimization: Use read_points_numpy results if possible, or just be careful.
-                    # Actually: The previous code was iterating `enumerate(points_gen)` until index.
-                    # That is VERY slow if index is late.
+
                     pass
-            
-            # Efficient approach: Read all points once into a numpy array (structured).
-            # This is much faster for lookup.
-            # However, converting 300k points might be heavy at 30Hz.
-            # Let's try to just be robust with the single point first, or check the loop logic. 
-            # The previous code: `for i, point in enumerate(points_gen): if i == point_index: ...`
-            # This is O(N) for every pixel lookup! And since we only do it ONCE when stopped, maybe acceptable.
-            
-            # Let's use read_points with uvs option? No, standard read_points doesn't have it.
-            # But we can assume organized cloud.
-            
-            # Let's just fix the infinite/nan check for now, and maybe average a few points if possible.
-            # Since we only call this when robot stops (rarely), we can afford a bit of cost.
-            
+                
             points_gen = pc2.read_points(
                 self.latest_pointcloud, 
                 field_names=('x', 'y', 'z'),
                 skip_nans=False
             )
              
-            # Optimization: We only want points near (pc_u, pc_v).
-            # Reading the whole generator to find one index is inefficient but let's stick to logic that works.
-            # To search neighborhood, we need multiple points.
-            
-            # Better: convert full cloud to numpy ONLY if we need (when checking).
-            # It might be 50ms.
-            
-            # Let's try a simpler robust check:
-            # We want (x,y,z) at `point_index`.
-            # Note: `read_points` iterates in row-major order.
-            
-            # We can skip to the approximate location? No.
-            
-            # Let's rewrite to use `read_points_list` which reads all.
-            points_list = list(points_gen) # heavy?
+            points_list = list(points_gen)
             
             # Window search
             target_depths = []
@@ -182,10 +144,8 @@ class Inference(Node):
             offset = (bbox[0] - center_x) / center_x  # -1 to +1
             
             if not self.target_found:
-                # First detection
                 self.target_found = True
-                self.get_logger().warn(f'🎯 {self.target_object.upper()} DÉTECTÉ !')
-                self.get_logger().info(f'📍 Position 2D: ({bbox[0]}, {bbox[1]}) pixels')
+                self.get_logger().warn(f'{self.target_object.upper()} DÉTECTÉ !')
             
             # Publish segmentation mask if available
             if mask is not None:
@@ -201,17 +161,16 @@ class Inference(Node):
             
             # Check if centered (within 10% of center)
             if abs(offset) < 0.1:
-                # Object is centered - STOP
                 stop_msg = String()
-                stop_msg.data = "STOP"
+                stop_msg.data = "TARGET_FOUND"
                 self.publisher_.publish(stop_msg)
                 
-                self.get_logger().info('🛑 Objet centré - Robot arrêté!')
+                self.get_logger().info(' Objet centré - Signal TARGET_FOUND envoyé!')
                 
                 pos_3d = self.get_3d_position(bbox[0], bbox[1])
                 if pos_3d:
                     x, y, z = pos_3d
-                    self.get_logger().info(f'📍 Position 3D: x={x:.2f}m, y={y:.2f}m, z={z:.2f}m')
+                    self.get_logger().info(f'[Camera frame] Position 3D: x={x:.2f}m, y={y:.2f}m, z={z:.2f}m')
                     
                     point_msg = PointStamped()
                     point_msg.header.stamp = self.get_clock().now().to_msg()
@@ -226,7 +185,7 @@ class Inference(Node):
                 self.publisher_.publish(orient_msg)
                 
                 direction = "gauche" if offset < 0 else "droite"
-                self.get_logger().info(f'🔄 Cadrage: offset={offset:.2f} → {direction}')
+                self.get_logger().info(f' Cadrage: offset={offset:.2f} → {direction}')
 
     def run_inference(self, frame):
         """
@@ -265,20 +224,13 @@ class Inference(Node):
                     
                     # Extract segmentation mask for this object
                     if r.masks is not None and idx < len(r.masks):
-                        # Get mask data (normalized 0-1, same size as inference)
                         mask_data = r.masks.data[idx].cpu().numpy()
-                        # Resize to original image size
                         target_mask = cv2.resize(
                             mask_data, 
                             (frame.shape[1], frame.shape[0]),
                             interpolation=cv2.INTER_NEAREST
                         )
-                        # Convert to binary uint8 (0 or 255)
                         target_mask = (target_mask > 0.5).astype(np.uint8) * 255
-                        
-                        self.get_logger().info(
-                            f'🎭 Masque segmentation: {np.sum(target_mask > 0)} pixels de {current_class}'
-                        )
                     break 
         
         return detected, annotated_frame, bbox_center, target_mask

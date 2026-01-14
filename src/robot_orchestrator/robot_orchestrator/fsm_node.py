@@ -41,11 +41,15 @@ class RobotOrchestrator(Node):
         # Orchestrator decides: if we are in detection/nav mode, forward the command
         if self.state in [RobotState.NAVIGATION, RobotState.DETECTION]:
             relay_msg = String()
-            relay_msg.data = command
-            self.nav_cmd_pub.publish(relay_msg)
             
-            if command == "STOP":
+            if command == "TARGET_FOUND":
                 self.state = RobotState.OBJECT_FOUND
+                relay_msg.data = "STOP"
+                self.get_logger().info("Decision: Target found -> Stopping Navigation")
+            else:
+                relay_msg.data = command
+                
+            self.nav_cmd_pub.publish(relay_msg)
 
     def obstacle_callback(self, msg):
         self.obstacle_detected = msg.data

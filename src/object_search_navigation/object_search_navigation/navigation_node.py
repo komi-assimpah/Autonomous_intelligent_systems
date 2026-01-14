@@ -104,6 +104,7 @@ class NavigationNode(Node):
                 self.cmd_vel_pub.publish(Twist())
             self.get_logger().info('🛑 STOP command received - Mission complete!')
             
+        #TODO: fixé l command à "CADRAGE" u lieux de startswith
         elif command.startswith("CADRAGE:"):
             try:
                 offset = float(command.split(":")[1])
@@ -111,7 +112,7 @@ class NavigationNode(Node):
                 self.state = self.ORIENT
                 if not self.target_found:
                     self.target_found = True # Temporarily found, actually just orienting
-                    self.get_logger().info(f'🎯 CADRAGE command received (offset: {offset:.2f})')
+                    self.get_logger().info(f' CADRAGE command received (offset: {offset:.2f})')
             except:
                 pass
 

@@ -3,14 +3,12 @@
 
 # Main Simulation (Gazebo + Nav2 + RViz)
 sim_d435i:
-	export LIBGL_ALWAYS_SOFTWARE=1 && \
 		. /opt/ros/*/setup.sh && \
 		. install/setup.sh && \
 		ros2 launch object_search_navigation sim_d435i.launch.py
 
 # Simulation Headless (No Gazebo GUI, only RViz - faster)
 sim_fast:
-	export LIBGL_ALWAYS_SOFTWARE=1 && \
 		. /opt/ros/*/setup.sh && \
 		. install/setup.sh && \
 		ros2 launch object_search_navigation sim_d435i.launch.py headless:=true

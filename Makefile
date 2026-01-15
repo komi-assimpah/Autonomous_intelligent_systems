@@ -2,7 +2,6 @@
 .PHONY: sim_house_gazebo search_nodes search_full teleop kill
 .PHONY: slam slam_search map_save nav2 fsm_explore
 
-# Default target
 all: build
 
 build:
@@ -37,12 +36,6 @@ sim_fast:
 		. install/setup.sh && \
 		ros2 launch object_search_navigation sim_d435i.launch.py headless:=true
 
-# Launch object search nodes ONLY (requires Gazebo already running)
-search_target:
-	. /opt/ros/*/setup.sh && \
-		. install/setup.sh && \
-		ros2 launch object_search_navigation search_nodes.launch.py
-
 keyboard_teleop:
 	. /opt/ros/*/setup.sh && \
 		ros2 run teleop_twist_keyboard teleop_twist_keyboard \
@@ -56,14 +49,13 @@ slam:
 		export TURTLEBOT3_MODEL=burger && \
 		ros2 launch turtlebot3_cartographer cartographer.launch.py use_sim_time:=true
 
-# TODO: SLAM + wall-following (systematic, for precise map)
 
 # Save the map after SLAM (run while slam is still running)
 map_save:
 	. /opt/ros/*/setup.sh && \
 		ros2 run nav2_map_server map_saver_cli -f maps/my_map
 
-# Kill all ROS/Gazebo processes
+
 kill:
 	-killall -9 ign gzserver gzclient ruby rviz2 2>/dev/null
 	-pkill -9 -f "ros2 run object_search_navigation" 2>/dev/null
@@ -71,7 +63,7 @@ kill:
 	-pkill -9 -f "ros2 run object_detector" 2>/dev/null
 	
 	-pkill -9 -f "parameter_bridge" 2>/dev/null
-	@echo "✅ All Gazebo, RViz, and project nodes killed."
+	@echo "All Gazebo, RViz, and project nodes killed."
 
 clean:
 	rm -rf build/ install/ log/

@@ -37,9 +37,7 @@ def generate_launch_description():
     
     world = os.path.join(turtlebot3_gazebo_dir, 'worlds', 'turtlebot3_world.world')
     
-    urdf_file = os.path.join(
-        turtlebot3_descriptions_dir, 'urdf', 'turtlebot3_burger_d435i.urdf'
-    )
+    urdf_file = os.path.join(turtlebot3_descriptions_dir, 'urdf', 'turtlebot3_burger_d435i.urdf')
     
     with open(urdf_file, 'r') as f:
         robot_description = f.read()

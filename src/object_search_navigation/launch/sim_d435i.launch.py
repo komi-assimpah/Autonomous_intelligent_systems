@@ -16,7 +16,6 @@ def generate_launch_description():
         value='burger'
     )
     
-    # Path to TurtleBot3 Gazebo launch file
     turtlebot3_gazebo_dir = get_package_share_directory('turtlebot3_gazebo')
     turtlebot3_descriptions_dir = get_package_share_directory('turtlebot3_descriptions')
     ros_gz_sim = get_package_share_directory('ros_gz_sim')
@@ -42,11 +41,12 @@ def generate_launch_description():
     with open(urdf_file, 'r') as f:
         robot_description = f.read()
     
-    # Set Gazebo resource path
-    set_env_vars_resources = AppendEnvironmentVariable(
-        'GZ_SIM_RESOURCE_PATH',
+    # Set Gazebo resource path for Ignition Gazebo (ROS 2 Humble)
+    set_ign_resource_path = AppendEnvironmentVariable(
+        'IGN_GAZEBO_RESOURCE_PATH',
         os.path.join(turtlebot3_gazebo_dir, 'models')
     )
+
     
     # Gazebo server (always runs)
     gzserver_cmd = IncludeLaunchDescription(
@@ -140,7 +140,7 @@ def generate_launch_description():
     return LaunchDescription([
         declare_headless,
         set_model,
-        set_env_vars_resources,
+        set_ign_resource_path,
         gzserver_cmd,
         gzclient_cmd,  # Only runs if headless=false
         robot_state_publisher,

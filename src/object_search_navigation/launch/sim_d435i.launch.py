@@ -35,13 +35,11 @@ def generate_launch_description():
     )
     
     world = os.path.join(turtlebot3_gazebo_dir, 'worlds', 'turtlebot3_world.world')
-    
     urdf_file = os.path.join(turtlebot3_descriptions_dir, 'urdf', 'turtlebot3_burger_d435i.urdf')
     
     with open(urdf_file, 'r') as f:
         robot_description = f.read()
     
-    # Set Gazebo resource path for Ignition Gazebo (ROS 2 Humble)
     set_ign_resource_path = AppendEnvironmentVariable(
         'IGN_GAZEBO_RESOURCE_PATH',
         os.path.join(turtlebot3_gazebo_dir, 'models')
@@ -86,7 +84,6 @@ def generate_launch_description():
         }.items()
     )
     
-    # RViz2 with custom D435i config (always runs)
     object_search_nav_dir = get_package_share_directory('object_search_navigation')
     rviz_config_file = os.path.join(object_search_nav_dir, 'rviz', 'search_with_map.rviz')
     rviz_cmd = Node(

@@ -24,11 +24,11 @@ class NavigationNode(Node):
         self.target_found = False
 
         # === FSM States ===
-        self.WAITING = -1 # Waiting for orchestrator start signal
+        self.WAITING = -1
         self.STOP = 0
         self.TURN = 1
         self.FORWARD = 2
-        self.ORIENT = 3  # Turn towards detected object
+        self.CADRAGE = 3  # Turn towards detected object
         
         self.state = self.WAITING
         
@@ -81,7 +81,7 @@ class NavigationNode(Node):
         # === Graceful shutdown ===
         signal.signal(signal.SIGINT, self.signal_handler)
 
-        self.get_logger().info('✅ Smart exploration node ready - WAITING for command...')
+        self.get_logger().info(' Smart exploration node ready - WAITING for command...')
 
     def signal_handler(self, signum, frame):
         self.get_logger().info("Ctrl+C detected, stopping robot...")
@@ -95,7 +95,7 @@ class NavigationNode(Node):
         if command == "START":
             if self.state == self.WAITING:
                 self.state = self.STOP
-                self.get_logger().info('🚀 START command received! Beginning exploration...')
+                self.get_logger().info(' START command received! Beginning exploration...')
                 
         elif command == "STOP":
             self.target_found = True
@@ -109,10 +109,10 @@ class NavigationNode(Node):
             try:
                 offset = float(command.split(":")[1])
                 self.target_offset = offset
-                self.state = self.ORIENT
+                self.state = self.CADRAGE
                 if not self.target_found:
                     self.target_found = True # Temporarily found, actually just orienting
-                    self.get_logger().info(f' CADRAGE command received (offset: {offset:.2f})')
+                    self.get_logger().info(f'CADRAGE command received (offset: {offset:.2f})')
             except:
                 pass
 
@@ -202,8 +202,8 @@ class NavigationNode(Node):
         if self.state == self.WAITING:
             return
 
-        # Handle ORIENT state separately (even after target_found)
-        if self.state == self.ORIENT:
+        # Handle CADRAGE state separately (even after target_found)
+        if self.state == self.CADRAGE:
             # Turn towards the detected object based on offset
             # offset is continuously updated by detection_callback
             # offset: -1 (left) to +1 (right)

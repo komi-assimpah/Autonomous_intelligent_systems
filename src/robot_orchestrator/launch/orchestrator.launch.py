@@ -1,8 +1,17 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 
 def generate_launch_description():
+    target_class_arg = DeclareLaunchArgument(
+        'target_class',
+        default_value='dog',
+        description='Target object class to detect (e.g. dog, cat, bottle)'
+    )
+
     return LaunchDescription([
+        target_class_arg,
         Node(
             package='robot_orchestrator',
             executable='fsm_node',
@@ -29,7 +38,10 @@ def generate_launch_description():
             executable='inference',
             name='inference',
             output='screen',
-            parameters=[{'use_sim_time': True}]
+            parameters=[{
+                'use_sim_time': True,
+                'target_class': LaunchConfiguration('target_class')
+            }]
         ),
         Node(
             package='ia_package',

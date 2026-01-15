@@ -15,10 +15,15 @@ sim_fast:
 		. install/setup.sh && \
 		ros2 launch object_search_navigation sim_d435i.launch.py headless:=true
 
+# Orchestrator (Intelligence: FSM, Inference, Nav, Vision)
+# Usage:
+#   make orchestrator                              -> Default (Dog)
+# ros2 launch robot_orchestrator orchestrator.launch.py target_class:='cat'
+#   make orchestrator ARGS="target_class:='cat' "   -> Search for a Cat
 orchestrator:
 	. /opt/ros/*/setup.sh && \
 		. install/setup.sh && \
-		ros2 launch robot_orchestrator orchestrator.launch.py
+		ros2 launch robot_orchestrator orchestrator.launch.py $(ARGS)
 
 slam_explore:
 	. /opt/ros/*/setup.sh && \

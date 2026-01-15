@@ -17,15 +17,12 @@ class Inference(Node):
         self.declare_parameter('model_path', 'yolo11n-seg.pt')
         self.declare_parameter('conf_threshold', 0.5)
         
-        # Publishers
         self.publisher_ = self.create_publisher(String, '/detection/command', 10)
         self.image_pub_ = self.create_publisher(Image, '/inference/image_processed', 10)
         self.mask_pub_ = self.create_publisher(Image, '/object/segmentation_mask', 10)
         self.class_pub_ = self.create_publisher(String, '/object/class_name', 10)
 
-        # Subscriber
-        self.subscription = self.create_subscription(
-            Image, '/processed/camera_feed', self.image_callback, 10)
+        self.subscription = self.create_subscription(Image, '/processed/camera_feed', self.image_callback, 10)
         
         self.br = CvBridge()
 
@@ -37,6 +34,17 @@ class Inference(Node):
         self.get_logger().info('Modèle chargé !')
 
         self.target_object = self.get_parameter('target_class').value
+        
+        available_classes = list(self.model.names.values())
+        if self.target_object not in available_classes:
+            error_msg = (
+                f"ERREUR CRITIQUE: La classe cible '{self.target_object}' est inconnue du modèle !\n"
+                f"Classes disponibles ({len(available_classes)}): {available_classes}\n"
+                f"-> Vérifiez l'orthographe ou changez de modèle."
+            )
+            self.get_logger().error(error_msg)
+            raise ValueError(error_msg)
+            
         self.target_found = False
         
         self.get_logger().info(f'Classe cible: {self.target_object}')
@@ -60,21 +68,19 @@ class Inference(Node):
                 self.target_found = True
                 self.get_logger().warn(f'{self.target_object.upper()} DÉTECTÉ !')
                 
-                # Send TARGET_FOUND to FSM (orchestrator handles stop)
                 stop_msg = String()
                 stop_msg.data = "TARGET_FOUND"
                 self.publisher_.publish(stop_msg)
             
-            # Publish segmentation mask (pointcloud_visualizer will compute 3D position)
             if mask is not None:
+                class_msg = String()
+                class_msg.data = self.target_object
+                self.class_pub_.publish(class_msg)
+
                 mask_msg = self.br.cv2_to_imgmsg(mask, encoding="mono8")
                 mask_msg.header.stamp = self.get_clock().now().to_msg()
                 mask_msg.header.frame_id = 'camera_link'
                 self.mask_pub_.publish(mask_msg)
-                
-                class_msg = String()
-                class_msg.data = self.target_object
-                self.class_pub_.publish(class_msg)
 
     def run_inference(self, frame):
         """

@@ -1,4 +1,4 @@
-# Setup Instructions (TO UPDATE)
+# Setup Instructions (TO BE UPDATED)
 
 ## Prerequisites
 - ROS2 Humble

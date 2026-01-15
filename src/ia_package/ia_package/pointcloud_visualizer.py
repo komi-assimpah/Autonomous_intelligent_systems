@@ -32,7 +32,6 @@ class Color:
 
 
 class Vector3:
-    """Représente un vecteur 3D."""
     def __init__(self, x=0.0, y=0.0, z=0.0):
         self.x = x
         self.y = y
@@ -40,15 +39,6 @@ class Vector3:
 
 
 class Point:
-    """
-    Représente un point 3D avec couleur et label sémantique.
-    
-    Permet de:
-    - Filtrer les points par classe sémantique (Dog, Person, etc.)
-    - Colorier automatiquement selon la classe détectée
-    - Identifier précisément l'objet cherché dans le nuage
-    """
-    
     SEMANTIC_CLASSES = [
         {'name': 'background',   'color': Color(255, 102, 102, 1.0)},
         {'name': 'aeroplane',    'color': Color(255, 178, 102, 1.0)},
@@ -299,7 +289,8 @@ class SemanticPointCloudVisualizer(Node):
         
         self.pc_manager = PointCloudManager()
         self.latest_ros_cloud = None
-        self.latest_mask = None  # NEW: Store segmentation mask
+        self.latest_mask = None
+        self.position_computed = False  # Flag to compute 3D only once per detection
         
         # TF2 for transforming camera_link -> map
         self.tf_buffer = Buffer()
@@ -313,14 +304,7 @@ class SemanticPointCloudVisualizer(Node):
             10
         )
         
-        self.object_position_sub = self.create_subscription(
-            PointStamped,
-            '/object/position',
-            self.object_position_callback,
-            10
-        )
-        
-        # NEW: Subscribe to segmentation mask from inference.py
+        # Subscribe to segmentation mask from inference.py
         from sensor_msgs.msg import Image
         from cv_bridge import CvBridge
         self.br = CvBridge()
@@ -329,6 +313,15 @@ class SemanticPointCloudVisualizer(Node):
             Image,
             '/object/segmentation_mask',
             self.mask_callback,
+            10
+        )
+        
+        # Subscribe to detection command to trigger 3D computation only on TARGET_FOUND
+        from std_msgs.msg import String
+        self.command_sub = self.create_subscription(
+            String,
+            '/detection/command',
+            self.command_callback,
             10
         )
         
@@ -352,6 +345,13 @@ class SemanticPointCloudVisualizer(Node):
             10
         )
         
+        # Publisher for 3D position (computed here now)
+        self.position_pub = self.create_publisher(
+            PointStamped,
+            '/object/position',
+            10
+        )
+        
         self.get_logger().info('[OK] Semantic PointCloud Visualizer démarré')
         self.get_logger().info(f'   - TARGET: {self.target_class}')
         self.get_logger().info(f'   - Rayon filtrage: {self.filter_radius}m')
@@ -359,16 +359,99 @@ class SemanticPointCloudVisualizer(Node):
         self.get_logger().info('En attente de détections (masque + position)...')
     
     def mask_callback(self, msg):
-        """Store the latest segmentation mask from inference.py."""
+        """On first mask: compute 3D and show markers. Then skip."""
         try:
             self.latest_mask = self.br.imgmsg_to_cv2(msg, desired_encoding='mono8')
-            self.get_logger().debug(f'Masque reçu: {self.latest_mask.shape}')
         except Exception as e:
             self.get_logger().error(f'Erreur conversion masque: {e}')
+            return
+        
+        # Only compute once per detection session
+        if self.position_computed:
+            return
+        
+        if self.latest_ros_cloud is None:
+            return
+        
+        # Compute 3D position from mask centroid
+        position = self.compute_3d_from_mask()
+        if position is not None:
+            self.position_computed = True  # Don't recompute
+            self.position_pub.publish(position)
+            self.process_detection(position)
+            self.get_logger().info('Position 3D calculée dès la première détection!')
+    
+    def command_callback(self, msg):
+        """Reset position flag when STOP received (mission complete)."""
+        if msg.data == "STOP":
+            self.position_computed = False  # Ready for next detection
     
     def pointcloud_callback(self, msg: PointCloud2):
         """Stocke le dernier nuage de points."""
         self.latest_ros_cloud = msg
+    
+    def compute_3d_from_mask(self):
+        """Compute 3D position from mask centroid using median filtering."""
+        if self.latest_mask is None or self.latest_ros_cloud is None:
+            return None
+        
+        import numpy as np
+        
+        mask_coords = np.where(self.latest_mask > 0)
+        if len(mask_coords[0]) == 0:
+            return None
+        
+        center_v = int(np.median(mask_coords[0]))
+        center_u = int(np.median(mask_coords[1]))
+        
+        cloud_width = self.latest_ros_cloud.width
+        cloud_height = self.latest_ros_cloud.height
+        mask_height, mask_width = self.latest_mask.shape[:2]
+        
+        # Scale to pointcloud coordinates
+        pc_u = int(center_u * cloud_width / mask_width)
+        pc_v = int(center_v * cloud_height / mask_height)
+        
+        # Read points with median window (5x5)
+        kernel_size = 5
+        half_kernel = kernel_size // 2
+        
+        points_gen = pc2.read_points(
+            self.latest_ros_cloud, 
+            field_names=('x', 'y', 'z'),
+            skip_nans=False
+        )
+        points_list = list(points_gen)
+        
+        valid_points = []
+        for dv in range(-half_kernel, half_kernel + 1):
+            for du in range(-half_kernel, half_kernel + 1):
+                uu = max(0, min(pc_u + du, cloud_width - 1))
+                vv = max(0, min(pc_v + dv, cloud_height - 1))
+                idx = vv * cloud_width + uu
+                
+                if idx < len(points_list):
+                    x, y, z = points_list[idx]
+                    if not np.isnan(x) and not np.isinf(x) and \
+                       not np.isnan(y) and not np.isinf(y) and \
+                       not np.isnan(z) and not np.isinf(z):
+                        valid_points.append((x, y, z))
+        
+        if not valid_points:
+            return None
+        
+        median_pt = np.median(valid_points, axis=0)
+        
+        point_msg = PointStamped()
+        point_msg.header.stamp = self.get_clock().now().to_msg()
+        point_msg.header.frame_id = 'camera_link'
+        point_msg.point.x = float(median_pt[0])
+        point_msg.point.y = float(median_pt[1])
+        point_msg.point.z = float(median_pt[2])
+        
+        self.get_logger().info(f'[Camera frame] Position 3D: x={median_pt[0]:.2f}m, y={median_pt[1]:.2f}m, z={median_pt[2]:.2f}m')
+        
+        return point_msg
     
     def transform_to_map(self, point_camera: PointStamped) -> PointStamped:
         """
@@ -381,11 +464,12 @@ class SemanticPointCloudVisualizer(Node):
             Point transformé dans le repère map, ou None si transformation impossible
         """
         try:
-            # Attendre que la transformation soit disponible (timeout 1s)
+            # Use Time() (time=0) to get the LATEST available transform
+            # instead of a specific timestamp that may not exist yet
             transform = self.tf_buffer.lookup_transform(
                 'map',
                 point_camera.header.frame_id,
-                point_camera.header.stamp,
+                rclpy.time.Time(),  # Use latest available
                 timeout=rclpy.duration.Duration(seconds=1.0)
             )
             
@@ -407,9 +491,10 @@ class SemanticPointCloudVisualizer(Node):
             return None
 
     
-    def object_position_callback(self, msg: PointStamped):
+    def process_detection(self, msg: PointStamped):
         """
-        Callback quand inference.py détecte un objet.
+        Process a detection: colorize points, publish markers.
+        Called internally when mask is received and 3D position computed.
         
         Actions:
         1. Charge le PointCloud dans le manager
@@ -494,8 +579,6 @@ class SemanticPointCloudVisualizer(Node):
             self.get_logger().warn('   ⚠️  Impossible de créer le marqueur map (transformation échouée)')
 
 
-
-    
     def create_detection_marker(self, position: PointStamped) -> Marker:
         """Crée un Marker 3D (cube vert) pour RViz2."""
         marker = Marker()
@@ -541,20 +624,6 @@ class SemanticPointCloudVisualizer(Node):
 
 
 def main(args=None):
-    """
-    Point d'entrée du nœud ROS2.
-    
-    Lancement:
-        ros2 run ia_package pointcloud_visualizer
-    
-    Avec paramètres:
-        ros2 run ia_package pointcloud_visualizer --ros-args \
-            -p target_class:=dog \
-            -p filter_radius:=0.7 \
-            -p highlight_color_r:=255 \
-            -p highlight_color_g:=165 \
-            -p highlight_color_b:=0
-    """
     rclpy.init(args=args)
     node = SemanticPointCloudVisualizer()
     

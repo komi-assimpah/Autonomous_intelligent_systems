@@ -1,0 +1,41 @@
+======================================================================
+RAPPORT DE BENCHMARK - JETSON
+======================================================================
+
+Date: 2026-01-19 00:46:33
+Appareil: JETSON
+Durée par modèle: 60s
+Modèles testés: 2
+
+----------------------------------------------------------------------
+MODÈLE: yolo11n-seg.onnx
+----------------------------------------------------------------------
+FPS Moyen:          2.96 FPS
+FPS Min/Max:        0.00 / 3.00 FPS
+CPU Moyen:          242.4%
+CPU Maximum:        594.9%
+Mémoire Moyenne:    312.8 MB
+Inférence Moyenne:  350.29 ms
+Détections/frame:   0.00
+Frames totales:     165
+
+----------------------------------------------------------------------
+MODÈLE: yolo11n-seg_float16.tflite
+----------------------------------------------------------------------
+FPS Moyen:          1.98 FPS
+FPS Min/Max:        0.00 / 2.00 FPS
+CPU Moyen:          160.9%
+CPU Maximum:        595.6%
+Mémoire Moyenne:    278.2 MB
+Inférence Moyenne:  554.28 ms
+Détections/frame:   0.00
+Frames totales:     106
+
+======================================================================
+Fichiers générés:
+  - summary.csv
+  - temporal_plots.png (Courbes temporelles - PRINCIPAL)
+  - comparison_plots.png (Résumé comparatif)
+  - report.txt
+  - yolo11n-seg_onnx_metrics.csv
+  - yolo11n-seg_float16_tflite_metrics.csv

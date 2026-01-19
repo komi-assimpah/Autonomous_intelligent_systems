@@ -25,7 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'inference = ia_package.inference:main',
-            'point_cloud = ia_package.point_cloud:main',
+            'pointcloud_visualizer = ia_package.pointcloud_visualizer:main',
         ],
     },
 )

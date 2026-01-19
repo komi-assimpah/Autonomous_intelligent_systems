@@ -48,11 +48,11 @@ class CameraProcessorNode(Node):
             
             self.frame_count += 1
             if self.frame_count % 100 == 0:
-                self.get_logger().info(f'📊 Processed {self.frame_count} frames')
+                self.get_logger().info(f' Processed {self.frame_count} frames')
         
         except Exception as e:
             self.processing_errors += 1
-            self.get_logger().error(f'❌ Error processing image: {str(e)}')
+            self.get_logger().error(f' Error processing image: {str(e)}')
     
     ## code generée
     def preprocess_image(self, image):
@@ -67,7 +67,7 @@ class CameraProcessorNode(Node):
                 interpolation=cv2.INTER_LINEAR
             )
         
-        # 2. Amélioration du contraste (CLAHE)
+        # Amélioration du contraste (CLAHE)
         if self.apply_clahe:
             # Convertir en LAB pour traiter uniquement la luminance
             lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
@@ -81,11 +81,11 @@ class CameraProcessorNode(Node):
             lab = cv2.merge([l, a, b])
             image = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
         
-        # 3. Réduction du bruit (optionnel, coûteux)
+        # Réduction du bruit (optionnel, coûteux)
         if self.apply_denoise:
             image = cv2.fastNlMeansDenoisingColored(image, None, 10, 10, 7, 21)
         
-        # 4. Normalisation (optionnel, selon votre modèle IA)
+        # Normalisation (optionnel selon le modèle IA)
         # image = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX)
         
         return image

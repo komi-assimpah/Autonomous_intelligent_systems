@@ -11,4 +11,3 @@ repositories:
     type: git
     url: https://github.com/ROBOTIS-GIT/turtlebot3_msgs.git
     version: humble
-  # Note: src/_gr/Turtlebot3 is now included directly in the repo (not a dependency)

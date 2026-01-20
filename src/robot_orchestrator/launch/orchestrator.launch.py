@@ -1,7 +1,11 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.substitutions import LaunchConfiguration
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.conditions import IfCondition
+from ament_index_python.packages import get_package_share_directory
+import os
 
 def generate_launch_description():
     target_class_arg = DeclareLaunchArgument(
@@ -10,8 +14,23 @@ def generate_launch_description():
         description='Target object class to detect (e.g. dog, cat, bottle)'
     )
 
+    sim_arg = DeclareLaunchArgument(
+        'sim',
+        default_value='false',
+        description='Launch simulation environment (Gazebo + RViz)'
+    )
+
+    sim_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(get_package_share_directory('object_search_navigation'), 'launch', 'sim_d435i.launch.py')
+        ),
+        condition=IfCondition(LaunchConfiguration('sim'))
+    )
+
     return LaunchDescription([
         target_class_arg,
+        sim_arg,
+        sim_launch,
         Node(
             package='robot_orchestrator',
             executable='fsm_node',

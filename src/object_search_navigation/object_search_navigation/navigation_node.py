@@ -88,7 +88,7 @@ class NavigationNode(Node):
             self.state = self.MISSION_COMPLETE
             for _ in range(5):
                 self.cmd_vel_pub.publish(Twist())
-            self.get_logger().info('🛑 STOP command received - Mission complete!')
+            self.get_logger().info('STOP command received - Mission complete!')
 
     def scan_callback(self, msg):
         self.last_scan = msg
@@ -173,7 +173,7 @@ class NavigationNode(Node):
             self.target_angle = self.find_best_direction()
             self.state = self.TURN
             self.last_turn_time = time.time()
-            self.get_logger().info(f"🔄 Exploring → {math.degrees(self.target_angle):.0f}°")
+            self.get_logger().info(f" Exploring → {math.degrees(self.target_angle):.0f}°")
 
         # ==============================
         # STATE: TURN - Rotate towards target
@@ -191,13 +191,13 @@ class NavigationNode(Node):
                 if time.time() - self.last_turn_time > 5.0:
                     self.stuck_counter += 1
                     if self.stuck_counter >= 3:
-                        self.get_logger().warn("⚠️ Possibly stuck, trying new direction")
+                        self.get_logger().warn("Possibly stuck, trying new direction")
                         self.state = self.RECALCULATE_DIRECTION
                         self.stuck_counter = 0
             else:
                 self.state = self.FORWARD
                 self.stuck_counter = 0
-                self.get_logger().info(f"✅ Aligned → Moving forward")
+                self.get_logger().info("Aligned → Moving forward")
 
         # ==============================
         # STATE: FORWARD - Move with adaptive speed
@@ -211,7 +211,7 @@ class NavigationNode(Node):
                 vel_l = 0.0
                 vel_r = 0.0
                 self.state = self.RECALCULATE_DIRECTION
-                self.get_logger().info(f"🛑 Obstacle at {dist:.2f}m")
+                self.get_logger().info(f"Obstacle at {dist:.2f}m")
             else:
                 speed = self.get_adaptive_speed(dist)
                 vel_l = speed

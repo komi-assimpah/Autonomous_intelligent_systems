@@ -316,7 +316,7 @@ class VisualizerROS(Node):
             return
         
         self.get_logger().info(
-            f'\n✅ OBJET DÉTECTÉ: {self.target_class.upper()}\n'
+            f'\nOBJET DÉTECTÉ: {self.target_class.upper()}\n'
             f'   Position CAMERA: x={msg.point.x:.2f}m, y={msg.point.y:.2f}m, z={msg.point.z:.2f}m'
         )
         
@@ -339,21 +339,21 @@ class VisualizerROS(Node):
         
         marker = self.create_detection_marker(msg)
         self.marker_pub.publish(marker)
-        self.get_logger().info('   ✅ Marker VERT publié sur /object/detection_marker (camera_link)')
+        self.get_logger().info('    Marker VERT publié sur /object/detection_marker (camera_link)')
         
         filtered_cloud = temp_manager.to_ros_pointcloud2(
             msg.header.frame_id,
             self.get_clock().now().to_msg()
         )
         self.filtered_pc_pub.publish(filtered_cloud)
-        self.get_logger().info('   ✅ Nuage segmenté publié sur /object/pointcloud_filtered')
+        self.get_logger().info('    Nuage segmenté publié sur /object/pointcloud_filtered')
         
         point_map = self.transform_to_map(msg)
         if point_map is not None:
             map_marker = self.create_map_marker(point_map)
             self.map_marker_pub.publish(map_marker)
             self.get_logger().info(
-                f'   🔴 Marker ROUGE publié sur /object/detection_marker_map (map)\n'
+                f'    Marker ROUGE publié sur /object/detection_marker_map (map)\n'
                 f'      Position MAP: x={point_map.point.x:.2f}m, y={point_map.point.y:.2f}m, z={point_map.point.z:.2f}m'
             )
         else:
@@ -411,7 +411,7 @@ def main(args=None):
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        node.get_logger().info('🛑 Arrêt du nœud Semantic PointCloud Visualizer')
+        node.get_logger().info('Arrêt du nœud Semantic PointCloud Visualizer')
     finally:
         node.destroy_node()
         if rclpy.ok():

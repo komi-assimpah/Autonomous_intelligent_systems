@@ -36,8 +36,6 @@ cd Autonomous_intelligent_systems
 ```
 
 ### 2. Installer les Dépendances
-On utilise un script pour tout récupérer d'un coup.
-
 ```bash
 # 1. Outils de build
 sudo apt install python3-vcstool python3-colcon-common-extensions -y

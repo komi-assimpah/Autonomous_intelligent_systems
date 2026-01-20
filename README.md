@@ -42,15 +42,19 @@ On utilise un script pour tout récupérer d'un coup.
 # 1. Outils de build
 sudo apt install python3-vcstool python3-colcon-common-extensions -y
 
-# 2. Récupérer les sous-repos (TurtleBot3, Dynamixel...)
+# 2. Créer un environnement virtuel Python
+python3 -m venv venv
+source venv/bin/activate
+
+# 3. Récupérer les sous-repos (TurtleBot3, Dynamixel...)
 vcs import < dependencies.repos
 
-# 3. Installer les dépendances ROS
+# 4. Installer les dépendances ROS
 sudo apt update
 rosdep install --from-paths src --ignore-src -r -y
 
-# 4. Installer les libs Python (YOLO, etc.)
-pip3 install -r requirements.txt
+# 5. Installer les libs Python (YOLO, etc.)
+pip install -r requirements.txt
 ```
 
 ### 3. Compiler
@@ -62,6 +66,7 @@ source install/setup.bash
 ### 4. Configurer l'Environnement
 A chaque nouveau terminal ouvert avant de lancer le robot, lancez ces commande (ou créez un alias) :
 ```bash
+source venv/bin/activate
 export TURTLEBOT3_MODEL=burger
 source /opt/ros/humble/setup.bash
 source install/setup.bash
@@ -76,7 +81,7 @@ Lancer Gazebo, RViz et toute l'intelligence avec la commande
 ```bash
 ros2 launch robot_orchestrator orchestrator.launch.py sim:=true
 ```
-Par défaut, un chien est recherché. Pour spécifier l'objet à chercher, lancez :
+Par défaut, un chien est recherché. Pour spécifier l'objet à chercher, assurer vous d'avoir completement arreter la simulation précedente , ensuite lancez :
 
 ```bash
 # Pour chercher un objet spécifique

@@ -7,7 +7,7 @@ Ce projet consiste à développer un **robot mobile** capable d'explorer un envi
 Le robot combine **Exploration Autonome** et **Intelligence Artificielle**.
 1.  Il **explore** la pièce en évitant les murs.
 2.  Il **détecte** visuellement sa cible.
-3.  Il **s'arrête** et localise l'objet sur la carte et renvoie les coordonnées de l'objet trouvé dns le repère de la map.
+3.  Il **s'arrête**, localise l'objet sur la carte et renvoie les coordonnées de l'objet trouvé dans le repère de la map.
 
 ---
 

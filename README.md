@@ -60,7 +60,7 @@ source install/setup.bash
 ```
 
 ### 4. Configurer l'Environnement
-a chaque nouveau terminal ouvert avant de lancer le robot, lancez ces commande (ou créez un alias) :
+A chaque nouveau terminal ouvert avant de lancer le robot, lancez ces commande (ou créez un alias) :
 ```bash
 export TURTLEBOT3_MODEL=burger
 source /opt/ros/humble/setup.bash
@@ -79,6 +79,10 @@ ros2 launch robot_orchestrator orchestrator.launch.py sim:=true
 Par défaut, un chien est recherché. Pour spécifier l'objet à chercher, lancez :
 
 ```bash
+# Pour chercher un objet spécifique
+ros2 launch robot_orchestrator orchestrator.launch.py sim:=true target_class:='nom_de_la_classe_cible'
+
+Exemples :
 # Pour chercher un chien
 ros2 launch robot_orchestrator orchestrator.launch.py sim:=true target_class:='dog'
 
@@ -89,7 +93,7 @@ ros2 launch robot_orchestrator orchestrator.launch.py sim:=true target_class:='c
 Si cet objet n'est pas supporté par le modèle de recherche, vous aurez une erreur dans le terminal avec la liste de toutes les classes supportées par le modèle et donc recherchables.
 
 <!--
-### Robot Réel
+### Sur le robot Réel
 *Note : Section en attente de test matériel.*
 
 ```bash

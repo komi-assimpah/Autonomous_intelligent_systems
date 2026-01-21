@@ -36,7 +36,6 @@ class CameraProcessorNode(Node):
     
     
     def image_callback(self, msg):
-        """Traite et republie chaque image reçue"""
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8') #?
             processed_image = self.preprocess_image(cv_image)
@@ -54,12 +53,7 @@ class CameraProcessorNode(Node):
             self.processing_errors += 1
             self.get_logger().error(f' Error processing image: {str(e)}')
     
-    ## code generée
     def preprocess_image(self, image):
-        """
-        Pipeline de prétraitement d'image pour Edge AI
-        Adapté aux besoins de détection d'objets
-        """
         height, width = image.shape[:2]
         if width != self.target_width or height != self.target_height:
             image = cv2.resize(
@@ -67,38 +61,24 @@ class CameraProcessorNode(Node):
                 interpolation=cv2.INTER_LINEAR
             )
         
-        # Amélioration du contraste (CLAHE)
         if self.apply_clahe:
-            # Convertir en LAB pour traiter uniquement la luminance
             lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
             l, a, b = cv2.split(lab)
             
-            # Appliquer CLAHE sur le canal L
             clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
             l = clahe.apply(l)
             
-            # Reconstituer l'image
             lab = cv2.merge([l, a, b])
             image = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
         
-        # Réduction du bruit (optionnel, coûteux)
         if self.apply_denoise:
             image = cv2.fastNlMeansDenoisingColored(image, None, 10, 10, 7, 21)
         
-        # Normalisation (optionnel selon le modèle IA)
         # image = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX)
         
         return image
     
-    
-    ## pour debug
-    def get_statistics(self):
-        """Retourne les statistiques de traitement"""
-        return {
-            'frames_processed': self.frame_count,
-            'errors': self.processing_errors,
-            'success_rate': (self.frame_count / (self.frame_count + self.processing_errors)) * 100 if self.frame_count > 0 else 0
-        }
+
 
 
 def main(args=None):

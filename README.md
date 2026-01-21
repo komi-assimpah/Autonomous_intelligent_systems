@@ -29,6 +29,101 @@ Le diagramme ci-dessous illustre le déroulement complet d'une mission, de l'ini
 
 ## Installation & Démarrage
 
+### Logiciels prérequis
+
+### Install a Virtual Machine (VM)
+- On windows : VirtualBox (https://www.virtualbox.org)
+- On MacOSX : UTM (https://mac.getutm.app)
+
+### Ubuntu 22.04
+-  https://releases.ubuntu.com/jammy/
+
+! ARM image is required for Apple Silicon-based laptops,
+- https://cdimage.ubuntu.com/releases/22.04/release/
+- Only the server version is available… need to manually install GUI…
+
+```bash
+$> sudo apt update & sudo apt upgrade & sudo apt install ubuntu-desktop
+```
+the reboot your computer
+
+### ROS2 Humble
+
+- install ROS2 specific packages
+
+```bash
+$> sudo apt install ros-humble-ros-gz
+
+$> sudo apt install ros-humble-nav2-map-server
+$> sudo apt install ros-humble-cartographer
+$> sudo apt install ros-humble-cartographer-ros
+$> sudo apt install ros-humble-navigation2
+$> sudo apt install ros-humble-nav2-bringup
+$> sudo apt install ros-humble-turtlebot3-msgs
+$> sudo apt install ros-humble-xacro
+```
+
+- install colcon, the ROS2 package compiler
+```bash
+sudo apt install python3-colcon-common-extensions python3-argcomplete libboost-system-dev
+```
+
+- And cyclone DDS
+```bash
+sudo apt install ros-humble-rmw-cyclonedds-cpp
+```
+
+Then (because ??):
+```bash
+echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+
+echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> ~/.bashrc
+
+source .bashrc
+
+printenv | grep -i ROS (???)
+```
+
+Verify if there is any missing package dependencies and install them with :
+
+```bash
+sudo apt install build-essential
+sudo apt install python3-rosdep
+sudo rosdep init
+rosdep update
+```
+
+Verify ROS2 installation
+
+```bash
+$> ros2  
+usage: ros2 [-h] [--use-python-default-buffering] Call 'ros2 <command> -h' for more detailed usage. …  
+ros2 is an extensible command-line tool for ROS 2.  
+…  
+```
+
+### Gazebo
+
+Ce projet utilise **Gazebo Ignition Fortress** (compatible avec ROS2 Humble).
+
+```bash
+# Installation de Gazebo Ignition Fortress
+sudo apt install ros-humble-ros-gz
+
+# Vérifier l'installation
+ign gazebo --version
+# Devrait afficher : Gazebo Sim, version 6.x.x
+```
+
+> **Note** : Ne pas confondre avec `gazebo` (Gazebo Classic) ou `gz` (Gazebo Garden+).
+> Ce projet utilise `ign gazebo` (Ignition Fortress).
+
+Documentation officielle : https://gazebosim.org/docs/fortress/install_ubuntu
+
+---
+
+## Installation pour la Simulation (Gazebo)
+
 ### 1. Cloner le Projet
 ```bash
 git clone https://github.com/komi-assimpah/Autonomous_intelligent_systems.git
@@ -36,6 +131,8 @@ cd Autonomous_intelligent_systems
 ```
 
 ### 2. Installer les Dépendances
+On utilise un script pour tout récupérer d'un coup.
+
 ```bash
 # 1. Outils de build
 sudo apt install python3-vcstool python3-colcon-common-extensions -y
@@ -58,11 +155,13 @@ pip install -r requirements.txt
 ### 3. Compiler
 ```bash
 colcon build
+# ... (this may take a while) ...
+
 source install/setup.bash
 ```
 
 ### 4. Configurer l'Environnement
-A chaque nouveau terminal ouvert avant de lancer le robot, lancez ces commande (ou créez un alias) :
+A chaque nouveau terminal ouvert avant de lancer le robot, lancez ces commandes:
 ```bash
 source venv/bin/activate
 export TURTLEBOT3_MODEL=burger
@@ -70,22 +169,24 @@ source /opt/ros/humble/setup.bash
 source install/setup.bash
 ```
 
----
+ou ajouter un alias dans votre `~/.bashrc` :
+```bash
+alias robot_env='source ~/Autonomous_intelligent_systems/venv/bin/activate && export TURTLEBOT3_MODEL=burger && source /opt/ros/humble/setup.bash && source ~/Autonomous_intelligent_systems/install/setup.bash'
+```
 
-## Lancer la démo
-
-### En Simulation (PC)
-Lancer Gazebo, RViz et toute l'intelligence avec la commande
+### 5. Lancer la Simulation
+Lancer Gazebo, RViz et toute l'intelligence avec la commande :
 ```bash
 ros2 launch robot_orchestrator orchestrator.launch.py sim:=true
 ```
-Par défaut, un chien est recherché. Pour spécifier l'objet à chercher, assurer vous d'avoir completement arreter la simulation précedente , ensuite lancez :
+
+Par défaut, un chien est recherché. Pour spécifier l'objet à chercher, assurez-vous d'avoir complètement arrêté la simulation précédente, ensuite lancez :
 
 ```bash
 # Pour chercher un objet spécifique
 ros2 launch robot_orchestrator orchestrator.launch.py sim:=true target_class:='nom_de_la_classe_cible'
 
-Exemples :
+# Exemples :
 # Pour chercher un chien
 ros2 launch robot_orchestrator orchestrator.launch.py sim:=true target_class:='dog'
 
@@ -93,21 +194,29 @@ ros2 launch robot_orchestrator orchestrator.launch.py sim:=true target_class:='d
 ros2 launch robot_orchestrator orchestrator.launch.py sim:=true target_class:='cat'
 ```
 
-Si cet objet n'est pas supporté par le modèle de recherche, vous aurez une erreur dans le terminal avec la liste de toutes les classes supportées par le modèle et donc recherchables.
-
-<!--
-### Sur le robot Réel
-*Note : Section en attente de test matériel.*
-
-```bash
-ros2 launch robot_orchestrator orchestrator.launch.py sim:=false
-```
--->
-
+Si cet objet n'est pas supporté par le modèle de recherche, vous aurez une erreur dans le terminal avec la liste de toutes les classes supportées par le modèle.
 
 ---
 
+## Installation pour le Robot Réel (TurtleBot3)
 
+> **Note** : Cette section est en cours de validation.
+
+### Paquets supplémentaires requis
+Ces paquets ne sont **pas nécessaires** pour la simulation Gazebo, mais requis pour un TurtleBot3 physique :
+
+```bash
+sudo apt install ros-humble-hls-lfcd-lds-driver
+
+sudo apt install ros-humble-dynamixel-sdk
+
+sudo apt install libudev-dev
+```
+
+### Lancer sur le Robot Réel
+```bash
+ros2 launch robot_orchestrator orchestrator.launch.py sim:=false
+```
 
 ---
 

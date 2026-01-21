@@ -1,79 +1,79 @@
-# Système Robotique Autonome de Recherche d'Objet (Autonomous Intelligent Systems)
+# Autonomous Object Search System
 
-## Présentation du Projet
-Ce projet consiste à développer un **robot mobile** capable d'explorer un environnement pour trouver un objet spécifique (ex: chien, chat, bouteille, etc.), **de manière totalement autonome**.
+## Project Overview
+This project involves developing a mobile robot capable of exploring an environment to find a specific object (e.g., dog, cat, bottle, etc.) completely autonomously.
 
-### Le Concept
-Le robot combine **Exploration Autonome** et **Intelligence Artificielle**.
-1.  Il **explore** la pièce en évitant les murs.
-2.  Il **détecte** visuellement sa cible.
-3.  Il **s'arrête**, localise l'objet sur la carte et renvoie les coordonnées de l'objet trouvé dans le repère de la map.
-
----
-
-
-## Architecture du Système
-Le système repose sur 3 Packages ROS 2 :
-
-- **`ia_package`** : Détection d'objets (YOLOv11) et positionnement 3D dans les différentes repères (CAMERA et MAP).
-- **`robot_orchestrator`** : Machine à états qui pilote la mission globale.
-- **`object_search_navigation`** : Algorithme d'exploration et d'évitement d'obstacles.
-
-### Ordonnancement de la Mission
-Le diagramme ci-dessous illustre le déroulement complet d'une mission, de l'initialisation à l'arrêt, et les interactions entre les 3 packages et l'environnement :
-
-![Séquence de la mission](docs/architecture.png)
-
+### The Concept
+The robot combines **Autonomous Exploration** and **Artificial Intelligence**.
+1.  It **explores** the room while avoiding walls.
+2.  It visually **detects** its target using a camera.
+3.  It **stops**, localizes the object on the map, and reports the object's coordinates in the map frame.
 
 ---
 
-## Installation & Démarrage
+## System Architecture
+The system relies on 3 ROS 2 Packages:
 
-### Logiciels prérequis
+- **`ia_package`**: Object detection (YOLOv11) and 3D positioning in different frames (CAMERA and MAP).
+- **`robot_orchestrator`**: State machine that controls the global mission.
+- **`object_search_navigation`**: Exploration and obstacle avoidance algorithm.
 
-### Install a Virtual Machine (VM)
-- On windows : VirtualBox (https://www.virtualbox.org)
-- On MacOSX : UTM (https://mac.getutm.app)
+### Mission Sequence
+The diagram below illustrates the complete mission flow, from initialization to shutdown, and the interactions between the 3 packages and the environment:
 
-### Ubuntu 22.04
--  https://releases.ubuntu.com/jammy/
+![Mission Sequence](docs/architecture.png)
+
+---
+
+## Installation & Quick Start
+
+### Prerequisites
+
+### 1. Prepare a Virtual Machine (If necessary)
+- On Windows: VirtualBox (https://www.virtualbox.org)
+- On MacOSX: UTM (https://mac.getutm.app)
+
+### 2. Install Ubuntu 22.04 (Jammy Jellyfish)
+- Download: https://releases.ubuntu.com/jammy/
 
 ! ARM image is required for Apple Silicon-based laptops,
 - https://cdimage.ubuntu.com/releases/22.04/release/
 - Only the server version is available… need to manually install GUI…
 
 ```bash
-$> sudo apt update & sudo apt upgrade & sudo apt install ubuntu-desktop
+sudo apt update && sudo apt upgrade && sudo apt install ubuntu-desktop
 ```
-the reboot your computer
+Then reboot your computer.
 
-### ROS2 Humble
-
-- install ROS2 specific packages
+### 3. Install ROS 2 Humble
+Follow the official procedure or use the commands below for a quick installation of necessary packages.
 
 ```bash
-$> sudo apt install ros-humble-ros-gz
-
-$> sudo apt install ros-humble-nav2-map-server
-$> sudo apt install ros-humble-cartographer
-$> sudo apt install ros-humble-cartographer-ros
-$> sudo apt install ros-humble-navigation2
-$> sudo apt install ros-humble-nav2-bringup
-$> sudo apt install ros-humble-turtlebot3-msgs
-$> sudo apt install ros-humble-xacro
+sudo apt install ros-humble-ros-gz
+sudo apt install ros-humble-nav2-map-server
+sudo apt install ros-humble-cartographer
+sudo apt install ros-humble-cartographer-ros
+sudo apt install ros-humble-navigation2
+sudo apt install ros-humble-nav2-bringup
+sudo apt install ros-humble-turtlebot3-msgs
+sudo apt install ros-humble-xacro
 ```
 
-- install colcon, the ROS2 package compiler
+Next, install **Colcon** (the standard ROS 2 compiler):
+
 ```bash
 sudo apt install python3-colcon-common-extensions python3-argcomplete libboost-system-dev
 ```
 
-- And cyclone DDS
+Finally, install **Cyclone DDS**:
+
 ```bash
 sudo apt install ros-humble-rmw-cyclonedds-cpp
 ```
 
-Then (because ??):
+### Shell Configuration (bashrc)
+To make ROS 2 accessible in every new terminal and to use CycloneDDS for robot communication, execute this once:
+
 ```bash
 echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 
@@ -81,10 +81,11 @@ echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> ~/.bashrc
 
 source .bashrc
 
-printenv | grep -i ROS (???)
+# Verify variables are loaded
+printenv | grep -i ROS
 ```
 
-Verify if there is any missing package dependencies and install them with :
+Verify if any system dependencies are missing and install them:
 
 ```bash
 sudo apt install build-essential
@@ -93,66 +94,63 @@ sudo rosdep init
 rosdep update
 ```
 
-Verify ROS2 installation
+Verify that the ROS 2 installation works:
 
 ```bash
-$> ros2  
-usage: ros2 [-h] [--use-python-default-buffering] Call 'ros2 <command> -h' for more detailed usage. …  
-ros2 is an extensible command-line tool for ROS 2.  
-…  
+ros2
+# usage: ros2 [-h] ...
+# ros2 is an extensible command-line tool for ROS 2.
 ```
 
-### Gazebo
+### 4. Install Gazebo
 
-Ce projet utilise **Gazebo Ignition Fortress** (compatible avec ROS2 Humble).
-
+This project uses **Gazebo Ignition Fortress** compatible with ROS2 Humble.
 ```bash
-# Installation de Gazebo Ignition Fortress
 sudo apt install ros-humble-ros-gz
 
-# Vérifier l'installation
+# Verify installation
 ign gazebo --version
-# Devrait afficher : Gazebo Sim, version 6.x.x
+# Should display: Gazebo Sim, version 6.x.x
 ```
 
-> **Note** : Ne pas confondre avec `gazebo` (Gazebo Classic) ou `gz` (Gazebo Garden+).
-> Ce projet utilise `ign gazebo` (Ignition Fortress).
+> **Note**: Do not confuse with `gazebo` (Gazebo Classic) or `gz` (Gazebo Garden+).
+> This project uses `ign gazebo` (Ignition Fortress).
 
-Documentation officielle : https://gazebosim.org/docs/fortress/install_ubuntu
+Official Documentation: https://gazebosim.org/docs/fortress/install_ubuntu
 
 ---
 
-## Installation pour la Simulation (Gazebo)
+## Simulation Installation (Gazebo)
 
-### 1. Cloner le Projet
+### 1. Clone the Project
 ```bash
 git clone https://github.com/komi-assimpah/Autonomous_intelligent_systems.git
+
 cd Autonomous_intelligent_systems
 ```
 
-### 2. Installer les Dépendances
-On utilise un script pour tout récupérer d'un coup.
+### 2. Install Dependencies
 
 ```bash
-# 1. Outils de build
+# 1. Build tools
 sudo apt install python3-vcstool python3-colcon-common-extensions -y
 
-# 2. Créer un environnement virtuel Python
+# 2. Create a Python virtual environment
 python3 -m venv venv
 source venv/bin/activate
 
-# 3. Récupérer les sous-repos (TurtleBot3, Dynamixel...)
+# 3. Fetch sub-repositories (TurtleBot3, Dynamixel...)
 vcs import < dependencies.repos
 
-# 4. Installer les dépendances ROS
+# 4. Install ROS dependencies
 sudo apt update
 rosdep install --from-paths src --ignore-src -r -y
 
-# 5. Installer les libs Python (YOLO, etc.)
+# 5. Install Python libs (YOLO, etc.)
 pip install -r requirements.txt
 ```
 
-### 3. Compiler
+### 3. Build
 ```bash
 colcon build
 # ... (this may take a while) ...
@@ -160,8 +158,8 @@ colcon build
 source install/setup.bash
 ```
 
-### 4. Configurer l'Environnement
-A chaque nouveau terminal ouvert avant de lancer le robot, lancez ces commandes:
+### 4. Configure Environment
+In every new terminal opened before launching the robot, run these commands:
 ```bash
 source venv/bin/activate
 export TURTLEBOT3_MODEL=burger
@@ -169,55 +167,32 @@ source /opt/ros/humble/setup.bash
 source install/setup.bash
 ```
 
-ou ajouter un alias dans votre `~/.bashrc` :
-```bash
-alias robot_env='source ~/Autonomous_intelligent_systems/venv/bin/activate && export TURTLEBOT3_MODEL=burger && source /opt/ros/humble/setup.bash && source ~/Autonomous_intelligent_systems/install/setup.bash'
-```
+Or add an alias to your `~/.bashrc`
 
-### 5. Lancer la Simulation
-Lancer Gazebo, RViz et toute l'intelligence avec la commande :
+### 5. Launch Simulation
+Launch Gazebo, RViz, and all intelligence with the command:
 ```bash
 ros2 launch robot_orchestrator orchestrator.launch.py sim:=true
 ```
 
-Par défaut, un chien est recherché. Pour spécifier l'objet à chercher, assurez-vous d'avoir complètement arrêté la simulation précédente, ensuite lancez :
+By default, it searches for a dog. To specify a target object, ensure the previous simulation is completely stopped, then launch:
 
 ```bash
-# Pour chercher un objet spécifique
-ros2 launch robot_orchestrator orchestrator.launch.py sim:=true target_class:='nom_de_la_classe_cible'
+# To search for a specific object
+ros2 launch robot_orchestrator orchestrator.launch.py sim:=true target_class:='target_class_name'
 
-# Exemples :
-# Pour chercher un chien
+# Examples:
+# To search for a dog
 ros2 launch robot_orchestrator orchestrator.launch.py sim:=true target_class:='dog'
 
-# Pour chercher un chat
+# To search for a cat
 ros2 launch robot_orchestrator orchestrator.launch.py sim:=true target_class:='cat'
 ```
 
-Si cet objet n'est pas supporté par le modèle de recherche, vous aurez une erreur dans le terminal avec la liste de toutes les classes supportées par le modèle.
+If the object is not supported by the search model, an error will appear in the terminal listing all supported classes.
 
 ---
 
-## Installation pour le Robot Réel (TurtleBot3)
+## Real Robot Installation (TurtleBot3)
 
-> **Note** : Cette section est en cours de validation.
-
-### Paquets supplémentaires requis
-Ces paquets ne sont **pas nécessaires** pour la simulation Gazebo, mais requis pour un TurtleBot3 physique :
-
-```bash
-sudo apt install ros-humble-hls-lfcd-lds-driver
-
-sudo apt install ros-humble-dynamixel-sdk
-
-sudo apt install libudev-dev
-```
-
-### Lancer sur le Robot Réel
-```bash
-ros2 launch robot_orchestrator orchestrator.launch.py sim:=false
-```
-
----
-
-
+> **Note**: This section is currently under validation.

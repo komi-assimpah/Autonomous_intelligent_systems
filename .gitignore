@@ -213,6 +213,3 @@ build/
 src/DynamixelSDK/
 src/turtlebot3/
 src/turtlebot3_msgs/
-
-# benchmarking results
-src/Benchmarking/benchmark_results/

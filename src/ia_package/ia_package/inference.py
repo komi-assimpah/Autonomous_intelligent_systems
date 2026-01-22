@@ -29,7 +29,7 @@ class Inference(Node):
         model_path = self.get_parameter('model_path').value
         self.conf_threshold = float(self.get_parameter('conf_threshold').value)
 
-        self.get_logger().info(f'Chargement du modèle de segmentation: {model_path}...')
+        self.get_logger().info(f'Chargement du modèle: {model_path}...')
         self.model = YOLO(model_path)
         self.get_logger().info('Modèle chargé !')
 
@@ -82,7 +82,6 @@ class Inference(Node):
                 mask_msg.header.frame_id = 'camera_link'
                 self.mask_pub_.publish(mask_msg)
 
-    
     def run_inference(self, frame):
         """
         Run YOLO segmentation inference on frame.
@@ -103,7 +102,7 @@ class Inference(Node):
         for r in results:
             annotated_frame = r.plot() 
             
-            if r.masks is None or r.boxes is None:
+            if r.boxes is None or len(r.boxes) == 0:
                 continue
 
             for idx, box in enumerate(r.boxes):
@@ -111,6 +110,11 @@ class Inference(Node):
                 current_class = self.model.names.get(cls_id, str(cls_id))
 
                 if current_class == self.target_object:
+                    xyxy = box.xyxy[0].cpu().numpy()
+                    x1, y1, x2, y2 = xyxy
+                    center_u = int((x1 + x2) / 2)
+                    center_v = int((y1 + y2) / 2)
+                    bbox_center = (center_u, center_v)
                     detected = True
                     
                     # Extract segmentation mask for this object
@@ -136,7 +140,9 @@ def main(args=None):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()

@@ -11,11 +11,11 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=['setuptools', 'ultralytics', 'matplotlib', 'scipy', 'numpy', 'sensor_msgs_py', 'opencv-python'],
+    install_requires=['setuptools'],
     zip_safe=True,
     maintainer='yanis',
     maintainer_email='yanis@todo.todo',
-    description='Package for AI inference and 3D visualization',
+    description='TODO: Package description',
     license='TODO: License declaration',
     extras_require={
         'test': [

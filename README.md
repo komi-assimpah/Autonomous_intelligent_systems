@@ -27,6 +27,17 @@ The diagram below illustrates the complete mission flow, from initialization to 
 
 ## Installation & Quick Start
 
+> [!IMPORTANT]
+> **Disk Space Required**: 
+> - **Minimum 15 GB** for CPU-only installation (recommended for VMs/laptops without GPU)
+> - **Minimum 20 GB** for GPU installation with CUDA support
+> 
+> Breakdown (CPU-only):
+> - ROS 2 Humble (~2 GB)
+> - Python dependencies - CPU version (~2 GB)
+> - Build artifacts (~2 GB)
+> - System updates and cache (~2 GB)
+
 ### Prerequisites
 
 ### 1. Prepare a Virtual Machine (If necessary)
@@ -46,20 +57,40 @@ sudo apt update && sudo apt upgrade && sudo apt install ubuntu-desktop
 Then reboot your computer.
 
 ### 3. Install ROS 2 Humble
-Follow the official procedure or use the commands below for a quick installation of necessary packages.
 
+#### 3.1 Add ROS 2 Repository
 ```bash
-sudo apt install ros-humble-ros-gz
-sudo apt install ros-humble-nav2-map-server
-sudo apt install ros-humble-cartographer
-sudo apt install ros-humble-cartographer-ros
-sudo apt install ros-humble-navigation2
-sudo apt install ros-humble-nav2-bringup
-sudo apt install ros-humble-turtlebot3-msgs
-sudo apt install ros-humble-xacro
+# Add ROS 2 GPG key and repository
+sudo apt install software-properties-common curl -y
+sudo add-apt-repository universe
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+# Add repository to sources list
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 ```
 
-Next, install **Colcon** (the standard ROS 2 compiler):
+#### 3.2 Install ROS 2 Humble Desktop and Required Packages
+```bash
+# Update package list
+sudo apt update && sudo apt upgrade -y
+
+# Install ROS 2 Humble Desktop (base distribution)
+sudo apt install ros-humble-desktop -y
+
+# Install project-specific packages
+sudo apt install -y \
+  ros-humble-ros-gz \
+  ros-humble-nav2-map-server \
+  ros-humble-cartographer \
+  ros-humble-cartographer-ros \
+  ros-humble-navigation2 \
+  ros-humble-nav2-bringup \
+  ros-humble-turtlebot3-msgs \
+  ros-humble-xacro
+```
+
+#### 3.3 Install Build Tools
+Install **Colcon** (the standard ROS 2 build tool):
 
 ```bash
 sudo apt install python3-colcon-common-extensions python3-argcomplete libboost-system-dev
@@ -132,8 +163,8 @@ cd Autonomous_intelligent_systems
 ### 2. Install Dependencies
 
 ```bash
-# 1. Build tools
-sudo apt install python3-vcstool python3-colcon-common-extensions -y
+# 1. Build tools and Python virtual environment support
+sudo apt install python3-vcstool python3-colcon-common-extensions python3-venv -y
 
 # 2. Create a Python virtual environment
 python3 -m venv venv
@@ -146,8 +177,14 @@ vcs import < dependencies.repos
 sudo apt update
 rosdep install --from-paths src --ignore-src -r -y
 
-# 5. Install Python libs (YOLO, etc.)
-pip install -r requirements.txt
+# 5. Install Python libs (YOLO, PyTorch, etc.)
+# Choose ONE of the following options:
+
+# Option A: CPU-only (Recommended for VMs/laptops without GPU, saves ~3-4 GB)
+pip install -r requirements-cpu.txt
+
+# Option B: GPU with CUDA (Only if you have an NVIDIA GPU)
+# pip install -r requirements.txt
 ```
 
 ### 3. Build
@@ -196,3 +233,37 @@ If the object is not supported by the search model, an error will appear in the 
 ## Real Robot Installation (TurtleBot3)
 
 > **Note**: This section is currently under validation.
+
+---
+
+## Troubleshooting
+
+### Disk Space Issues
+If you encounter `No space left on device` during installation:
+
+```bash
+# Check available space
+df -h /
+
+# Clean package cache
+sudo apt clean
+sudo apt autoremove -y
+
+# Clean pip cache
+rm -rf ~/.cache/pip
+
+# Clean journal logs (keep last 7 days)
+sudo journalctl --vacuum-time=7d
+
+# Find large directories
+du -xh ~ | sort -h | tail -n 20
+```
+
+### Python Package Installation Failed
+If `pip install -r requirements.txt` fails:
+
+```bash
+# Ensure you have enough space (see above)
+# Retry installation
+pip install -r requirements.txt
+```

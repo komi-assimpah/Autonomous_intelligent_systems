@@ -22,7 +22,7 @@ class CameraProcessorNode(Node):
         
         self.camera_sub = self.create_subscription(
             Image,
-            '/rgb_camera/image',
+            '/camera/color/image_raw',
             self.image_callback,
             10
         )

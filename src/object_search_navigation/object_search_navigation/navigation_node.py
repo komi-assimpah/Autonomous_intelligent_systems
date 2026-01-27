@@ -35,7 +35,7 @@ class NavigationNode(Node):
         # === Speed Parameters ===
         self.SPEED_LINEAR_MAX = 0.3
         self.SPEED_LINEAR_MIN = 0.1
-        self.SPEED_ANGULAR_MAX = 0.4
+        self.SPEED_ANGULAR_MAX = 0.08
         self.Kp_ANGULAR = 2.5
 
         # === Navigation Parameters ===
@@ -68,6 +68,7 @@ class NavigationNode(Node):
         self.timer = self.create_timer(0.05, self.control_cycle)
 
         signal.signal(signal.SIGINT, self.signal_handler)
+        signal.signal(signal.SIGTERM, self.signal_handler)  # Handle pkill too
 
         self.get_logger().info(' Smart exploration node ready - WAITING for command...')
 
@@ -102,6 +103,7 @@ class NavigationNode(Node):
     def emergency_stop(self):
         for _ in range(3):
             self.cmd_vel_pub.publish(Twist())
+            time.sleep(0.05)
 
     def find_best_direction(self):
         scan = self.last_scan

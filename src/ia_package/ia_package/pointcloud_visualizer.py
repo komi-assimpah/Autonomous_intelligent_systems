@@ -192,7 +192,7 @@ class VisualizerROS(Node):
         try:
             self.latest_mask = self.br.imgmsg_to_cv2(msg, desired_encoding='mono8')
         except Exception as e:
-            self.get_logger().error(f'Erreur conversion masque: {e}')
+            self.get_logger().error(f'Error mask conversion: {e}')
             return
         
         if self.position_computed:
@@ -202,12 +202,15 @@ class VisualizerROS(Node):
             return
         
         # Compute 3D position from mask centroid
+        self.get_logger().info('Calculating 3D position...')
         position = self.compute_3d_from_mask()
         if position is not None:
             self.position_computed = True  # Don't recompute
             self.position_pub.publish(position)
             self.process_detection(position)
-            self.get_logger().info('Position 3D calculée dès la première détection!')
+            self.get_logger().info('Position 3D calculate as soon as target detected!')
+        else:
+            self.get_logger().warn('Impossible to calculate the position 3D')
     
     def command_callback(self, msg):
         """Reset position flag when STOP received (mission complete)."""

@@ -174,13 +174,14 @@ sudo apt update
 rosdep install --from-paths src --ignore-src -r -y
 
 # 4. Install Python libs (YOLO, PyTorch, etc.)
+# IMPORTANT: This step is REQUIRED and installs AI/ML dependencies
 # Choose ONE of the following options:
 
 # Option A: CPU-only (Recommended for VMs/laptops without GPU, saves ~3-4 GB)
-pip3 install -r requirements-cpu.txt
+pip3 install --user -r requirements-cpu.txt
 
 # Option B: GPU with CUDA (Only if you have an NVIDIA GPU)
-pip3 install -r requirements.txt
+pip3 install --user -r requirements.txt
 ```
 
 ### 3. Build
@@ -239,32 +240,26 @@ If the object is not supported by the search model, an error will appear in the 
 
 ## Troubleshooting
 
-### Disk Space Issues
-If you encounter `No space left on device` during installation:
+### Gazebo Flickering or Black Screen (Wayland/VM)
+If Gazebo window is flickering, black, or not displaying the scene properly on systems using Wayland or in VMs (especially VMware):
 
+> [!IMPORTANT]
+> This issue commonly occurs when running Ubuntu in VMware
+
+**Solution:**
 ```bash
-# Check available space
-df -h /
+export LIBGL_ALWAYS_SOFTWARE=1
+export QT_QPA_PLATFORM=xcb
+export MESA_GL_VERSION_OVERRIDE=3.3
 
-# Clean package cache
-sudo apt clean
-sudo apt autoremove -y
-
-# Clean pip cache
-rm -rf ~/.cache/pip
-
-# Clean journal logs (keep last 7 days)
-sudo journalctl --vacuum-time=7d
-
-# Find large directories
-du -xh ~ | sort -h | tail -n 20
+# Then launch normally
+ros2 launch robot_orchestrator orchestrator.launch.py sim:=true
 ```
 
-### Python Package Installation Failed
-If `pip install -r requirements.txt` fails:
+- `LIBGL_ALWAYS_SOFTWARE=1` forces CPU-based rendering (avoids GPU driver issues)
+- `QT_QPA_PLATFORM=xcb` forces X11 instead of Wayland
+- `MESA_GL_VERSION_OVERRIDE=3.3` ensures OpenGL 3.3 compatibility
 
-```bash
-# Ensure you have enough space (see above)
-# Retry installation
-pip install -r requirements.txt
-```
+> [!NOTE]
+> Software rendering is slower but much more stable in VMs and Wayland environments.
+> The simulation will run correctly, just with lower FPS in the Gazebo GUI.

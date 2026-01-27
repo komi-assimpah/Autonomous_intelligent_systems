@@ -10,12 +10,16 @@ class RobotOrchestrator(Node):
         self.state = RobotState.INIT
 
         self.target_detected = False
+        
+        self.declare_parameter('localization_wait_time', 5)  # seconds
+        self.localization_wait_time = self.get_parameter('localization_wait_time').value
+        self.localization_start_time = None
 
         self.nav_cmd_pub = self.create_publisher(String, '/navigation/command', 10)
         self.pointcloud_trigger_pub = self.create_publisher(Bool, '/pointcloud_visualizer/project', 10)
         self.create_subscription(String, '/detection/command', self.detection_callback, 10)
 
-        self.timer = self.create_timer(0.01, self.run_fsm)
+        self.timer = self.create_timer(1.0, self.run_fsm)
         self.get_logger().info("FSM Orchestrator started")
 
 
@@ -40,8 +44,6 @@ class RobotOrchestrator(Node):
 
     # ================= FSM LOOP =================
     def run_fsm(self):
-        self.get_logger().info(f"STATE: {self.state.name}")
-
         if self.state == RobotState.INIT:
             self.handle_init()
         elif self.state == RobotState.LOCALIZATION:
@@ -59,8 +61,18 @@ class RobotOrchestrator(Node):
         self.state = RobotState.LOCALIZATION
 
     def handle_localization(self):
-        self.get_logger().info("Waiting for localization from /amcl... (Simulation: Assuming OK)")
-        self.state = RobotState.NAVIGATION
+        if self.localization_start_time is None:
+            self.localization_start_time = self.get_clock().now()
+            self.get_logger().info(f"Waiting {self.localization_wait_time}s for AMCL to converge...")
+        
+        elapsed = (self.get_clock().now() - self.localization_start_time).nanoseconds / 1e9
+        
+        if elapsed >= self.localization_wait_time:
+            self.get_logger().info("AMCL convergence time elapsed, starting navigation")
+            self.state = RobotState.NAVIGATION
+        else:
+            remaining = self.localization_wait_time - elapsed
+            self.get_logger().info(f"Waiting for AMCL... {remaining:.0f}s remaining")
 
     def handle_navigation(self):
         self.get_logger().info("Publishing START command to /navigation/command")

@@ -163,28 +163,24 @@ cd Autonomous_intelligent_systems
 ### 2. Install Dependencies
 
 ```bash
-# 1. Build tools and Python virtual environment support
-sudo apt install python3-vcstool python3-colcon-common-extensions python3-venv -y
+# 1. Build tools and Python package management
+sudo apt install python3-vcstool python3-colcon-common-extensions python3-pip -y
 
-# 2. Create a Python virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# 3. Fetch sub-repositories (TurtleBot3, Dynamixel...)
+# 2. Fetch sub-repositories (TurtleBot3, Dynamixel...)
 vcs import < dependencies.repos
 
-# 4. Install ROS dependencies
+# 3. Install ROS dependencies
 sudo apt update
 rosdep install --from-paths src --ignore-src -r -y
 
-# 5. Install Python libs (YOLO, PyTorch, etc.)
+# 4. Install Python libs (YOLO, PyTorch, etc.)
 # Choose ONE of the following options:
 
 # Option A: CPU-only (Recommended for VMs/laptops without GPU, saves ~3-4 GB)
-pip install -r requirements-cpu.txt
+pip3 install -r requirements-cpu.txt
 
 # Option B: GPU with CUDA (Only if you have an NVIDIA GPU)
-# pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 ### 3. Build
@@ -196,15 +192,20 @@ source install/setup.bash
 ```
 
 ### 4. Configure Environment
-In every new terminal opened before launching the robot, run these commands:
+
+In every new terminal, run:
 ```bash
-source venv/bin/activate
 export TURTLEBOT3_MODEL=burger
 source /opt/ros/humble/setup.bash
 source install/setup.bash
 ```
 
-Or add an alias to your `~/.bashrc`
+Or add these lines to your `~/.bashrc` for automatic setup:
+```bash
+echo 'export TURTLEBOT3_MODEL=burger' >> ~/.bashrc
+echo 'source /opt/ros/humble/setup.bash' >> ~/.bashrc
+echo 'source ~/Autonomous_intelligent_systems/install/setup.bash' >> ~/.bashrc
+```
 
 ### 5. Launch Simulation
 Launch Gazebo, RViz, and all intelligence with the command:

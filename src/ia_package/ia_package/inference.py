@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import PointStamped
 from std_msgs.msg import String
 from cv_bridge import CvBridge
 import cv2
@@ -21,8 +22,12 @@ class Inference(Node):
         self.image_pub_ = self.create_publisher(Image, '/inference/image_processed', 10)
         self.mask_pub_ = self.create_publisher(Image, '/object/segmentation_mask', 10)
         self.class_pub_ = self.create_publisher(String, '/object/class_name', 10)
+        self.position_pub_ = self.create_publisher(PointStamped, '/object/position', 10)
 
-        self.subscription = self.create_subscription(Image, '/camera/image_decompressed', self.image_callback, 10)
+        self.rgb_sub = self.create_subscription(Image, '/camera/image_decompressed', self.image_callback, 10)
+        self.depth_sub = self.create_subscription(Image, '/camera/depth/image_raw', self.depth_callback, 10)
+        
+        self.latest_depth = None
         
         self.br = CvBridge()
 
@@ -46,8 +51,57 @@ class Inference(Node):
             raise ValueError(error_msg)
             
         self.target_found = False
+        self.position_computed = False
         
         self.get_logger().info(f'Classe cible: {self.target_object}')
+    
+    def depth_callback(self, msg):
+        """Store latest depth image"""
+        try:
+            self.latest_depth = self.br.imgmsg_to_cv2(msg, desired_encoding="16UC1")
+        except Exception as e:
+            self.get_logger().error(f'Depth conversion error: {e}')
+    
+    def compute_3d_position(self, bbox, mask):
+        """Compute 3D position from depth image and mask center."""
+        if self.latest_depth is None:
+            return None
+        
+        # Find mask centroid
+        mask_coords = np.where(mask > 0)
+        if len(mask_coords[0]) == 0:
+            return None
+        
+        center_y = int(np.median(mask_coords[0]))
+        center_x = int(np.median(mask_coords[1]))
+        
+        # Read depth value (in millimeters)
+        depth_mm = self.latest_depth[center_y, center_x]
+        if depth_mm == 0 or depth_mm > 10000:  # Invalid or too far
+            return None
+        
+        z = depth_mm / 1000.0  # Convert to meters
+        
+        # Camera intrinsics for 424x240
+        height, width = self.latest_depth.shape
+        fx = 300.0
+        fy = 300.0
+        cx = width / 2.0
+        cy = height / 2.0
+        
+        # Back-project to 3D
+        x = (center_x - cx) * z / fx
+        y = (center_y - cy) * z / fy
+        
+        # Create PointStamped message
+        point_msg = PointStamped()
+        point_msg.header.stamp = self.get_clock().now().to_msg()
+        point_msg.header.frame_id = 'camera_link'
+        point_msg.point.x = float(x)
+        point_msg.point.y = float(y)
+        point_msg.point.z = float(z)
+        
+        return point_msg
     
     def image_callback(self, msg):
         try:
@@ -81,6 +135,17 @@ class Inference(Node):
                 mask_msg.header.stamp = self.get_clock().now().to_msg()
                 mask_msg.header.frame_id = 'camera_link'
                 self.mask_pub_.publish(mask_msg)
+                
+                # Compute 3D position once
+                if not self.position_computed:
+                    position_3d = self.compute_3d_position(bbox, mask)
+                    if position_3d is not None:
+                        self.position_pub_.publish(position_3d)
+                        self.position_computed = True
+                        self.get_logger().info(
+                            f'Position 3D: x={position_3d.point.x:.2f}m, '
+                            f'y={position_3d.point.y:.2f}m, z={position_3d.point.z:.2f}m'
+                        )
 
     def run_inference(self, frame):
         """

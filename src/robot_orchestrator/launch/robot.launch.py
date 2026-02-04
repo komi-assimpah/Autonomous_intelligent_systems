@@ -30,18 +30,19 @@ def generate_launch_description():
     return LaunchDescription([
         robot_bringup,
         
+        # RGB-D Packed Publisher (6 FPS for USB stability)
         Node(
             package='mqtt_rgb_bridge',
             executable='rgb_publisher',
-            name='realsense_rgb_publisher',
+            name='realsense_rgbd_publisher',
             output='screen',
             parameters=[{
                 'width': 424,
                 'height': 240,
-                'fps': 15,
+                'fps': 6,
                 'jpeg_quality': 50,
-                'enable_depth': False,
-                'topic': '/camera/rgb/image_compressed'
+                'depth_quality': 1,
+                'topic': '/camera/rgbd/compressed'
             }]
         ),
         

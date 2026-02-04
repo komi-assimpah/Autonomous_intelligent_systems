@@ -38,7 +38,7 @@ def generate_launch_description():
         use_rviz_arg,
         cartographer_launch,
         
-        # Image decompressor: receives compressed JPEG from robot
+        # RGB-D Decompressor: receives packed RGB+Depth from robot
         Node(
             package='object_search_navigation',
             executable='image_decompressor_node',
@@ -46,9 +46,10 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'use_sim_time': False,
-                'image_topic': '/camera/rgb/image_compressed',
-                'show_window': True,
-                'window_name': 'Robot Camera Feed'
+                'image_topic': '/camera/rgbd/compressed',
+                'output_rgb_topic': '/camera/image_decompressed',
+                'output_depth_topic': '/camera/depth/image_raw',
+                'show_window': False
             }]
         ),
         
@@ -62,6 +63,15 @@ def generate_launch_description():
                 'target_class': LaunchConfiguration('target_class')
             }]
         ),
+        
+        # PointCloud Visualizer: DISABLED (inference.py now does direct 3D calc)
+        # Node(
+        #     package='ia_package',
+        #     executable='pointcloud_visualizer',
+        #     name='pointcloud_visualizer',
+        #     output='screen',
+        #     parameters=[{'use_sim_time': False}]
+        # ),
         
         
         # RViz with custom config for real robot exploration

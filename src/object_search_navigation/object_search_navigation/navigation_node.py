@@ -33,14 +33,15 @@ class NavigationNode(Node):
         self.state = self.WAITING
 
         # === Speed Parameters ===
-        self.SPEED_LINEAR_MAX = 0.3
-        self.SPEED_LINEAR_MIN = 0.1
-        self.SPEED_ANGULAR_MAX = 0.08
+        self.SPEED_LINEAR_MAX = 0.2       # Reduced from 0.3 to 0.2 to stay under Burger max speed (0.22)
+        self.SPEED_LINEAR_MIN = 0.15      # Increased 0.1->0.15 to overcome friction
+        self.SPEED_ANGULAR_MAX = 0.15      # Reduced to 0.15 m/s (approx 1.9 rad/s twist) to stay within safety limits
         self.Kp_ANGULAR = 2.5
 
         # === Navigation Parameters ===
-        self.ALIGN_TOLERANCE_DEG = 3.0     # Alignment tolerance (slightly larger for speed)
+        self.ALIGN_TOLERANCE_DEG = 10.0    # Increased 3->10 for easier alignment
         self.WHEEL_SEPARATION = 0.16       # TurtleBot3 Burger wheel separation
+        self.MIN_RANGE = 0.29              # NEW: Filter out robot's own camera mount (~0.25m)
         self.DISTANCE_STOP = 0.35          # Stop distance for obstacles
         self.DISTANCE_SLOWDOWN = 0.8       # Start slowing down at this distance
         self.OFFSET_MAX_DEG = 15.0         # Random offset for exploration variety
@@ -68,7 +69,6 @@ class NavigationNode(Node):
         self.timer = self.create_timer(0.05, self.control_cycle)
 
         signal.signal(signal.SIGINT, self.signal_handler)
-        signal.signal(signal.SIGTERM, self.signal_handler)  # Handle pkill too
 
         self.get_logger().info(' Smart exploration node ready - WAITING for command...')
 
@@ -89,7 +89,7 @@ class NavigationNode(Node):
             self.state = self.MISSION_COMPLETE
             for _ in range(5):
                 self.cmd_vel_pub.publish(Twist())
-            self.get_logger().info('STOP command received - Mission complete!')
+            self.get_logger().info('🛑 STOP command received - Mission complete!')
 
     def scan_callback(self, msg):
         self.last_scan = msg
@@ -103,7 +103,6 @@ class NavigationNode(Node):
     def emergency_stop(self):
         for _ in range(3):
             self.cmd_vel_pub.publish(Twist())
-            time.sleep(0.05)
 
     def find_best_direction(self):
         scan = self.last_scan
@@ -117,7 +116,8 @@ class NavigationNode(Node):
             angle_rad = math.radians(angle_deg)
             world_angle = lu.normalize_angle(self.current_yaw + angle_rad)
             
-            dist, _ = lu.get_min_range_at_angle(scan, angle_rad, 45.0)
+            # FIX: Pass angle_deg (degrees) not angle_rad, and use MIN_RANGE filter
+            dist, _ = lu.get_min_range_at_angle(scan, angle_deg, 45.0, self.MIN_RANGE)
             if dist is None or dist > scan.range_max:
                 dist = scan.range_max
             
@@ -175,7 +175,7 @@ class NavigationNode(Node):
             self.target_angle = self.find_best_direction()
             self.state = self.TURN
             self.last_turn_time = time.time()
-            self.get_logger().info(f" Exploring → {math.degrees(self.target_angle):.0f}°")
+            self.get_logger().info(f"🔄 Exploring → {math.degrees(self.target_angle):.0f}°")
 
         # ==============================
         # STATE: TURN - Rotate towards target
@@ -183,6 +183,9 @@ class NavigationNode(Node):
         elif self.state == self.TURN:
             angle_error = lu.normalize_angle(self.target_angle - self.current_yaw)
             angle_error_deg = math.degrees(angle_error)
+            
+            # DEBUG LOG
+            # self.get_logger().info(f"Target: {math.degrees(self.target_angle):.1f} | Curr: {math.degrees(self.current_yaw):.1f} | Err: {angle_error_deg:.1f}")
 
             if abs(angle_error_deg) >= self.ALIGN_TOLERANCE_DEG:
                 vel = self.Kp_ANGULAR * angle_error
@@ -190,22 +193,26 @@ class NavigationNode(Node):
                 vel_r = vel
                 vel_l = -vel
                 
-                if time.time() - self.last_turn_time > 5.0:
+                # Boosted timeout to 10s
+                if time.time() - self.last_turn_time > 10.0:
                     self.stuck_counter += 1
                     if self.stuck_counter >= 3:
-                        self.get_logger().warn("Possibly stuck, trying new direction")
+                        self.get_logger().warn(f"⚠️ Possibly stuck (Err: {angle_error_deg:.1f}°), trying new direction")
                         self.state = self.RECALCULATE_DIRECTION
                         self.stuck_counter = 0
             else:
                 self.state = self.FORWARD
                 self.stuck_counter = 0
-                self.get_logger().info("Aligned → Moving forward")
+                self.get_logger().info(f"✅ Aligned (Err: {angle_error_deg:.1f}°) → Moving forward")
 
         # ==============================
         # STATE: FORWARD - Move with adaptive speed
         # ==============================
         elif self.state == self.FORWARD:
-            dist, _ = lu.get_min_range_at_angle(self.last_scan, 0.0, self.FOV)
+            # FIX: Use MIN_RANGE to ignore camera mount
+            dist, _ = lu.get_min_range_at_angle(self.last_scan, 0.0, self.FOV, self.MIN_RANGE)
+            self.get_logger().info(f"Forward with dist: {dist:.2f}m")
+            
             if dist is None:
                 dist = lu.get_max_range(self.last_scan)
 
@@ -213,14 +220,15 @@ class NavigationNode(Node):
                 vel_l = 0.0
                 vel_r = 0.0
                 self.state = self.RECALCULATE_DIRECTION
-                self.get_logger().info(f"Obstacle at {dist:.2f}m")
+                self.get_logger().info(f"🛑 Obstacle at {dist:.2f}m")
             else:
                 speed = self.get_adaptive_speed(dist)
                 vel_l = speed
                 vel_r = speed
                 
-                dist_left, _ = lu.get_min_range_at_angle(self.last_scan, math.radians(30), 30.0)
-                dist_right, _ = lu.get_min_range_at_angle(self.last_scan, math.radians(-30), 30.0)
+                # FIX: Use degrees (30.0) not radians, and MIN_RANGE
+                dist_left, _ = lu.get_min_range_at_angle(self.last_scan, 30.0, 30.0, self.MIN_RANGE)
+                dist_right, _ = lu.get_min_range_at_angle(self.last_scan, -30.0, 30.0, self.MIN_RANGE)
                 
                 if dist_left and dist_right:
                     if dist_left < 0.5 and dist_right > dist_left:
@@ -231,6 +239,11 @@ class NavigationNode(Node):
                         vel_r *= 1.1
 
         twist = wheels_to_twist(vel_l, vel_r, self.WHEEL_SEPARATION)
+        
+        # DEBUG LOG CMD_VEL
+        if abs(twist.linear.x) > 0.01 or abs(twist.angular.z) > 0.01:
+             self.get_logger().info(f"CMD_VEL: Lin={twist.linear.x:.2f} Ang={twist.angular.z:.2f}")
+             
         self.cmd_vel_pub.publish(twist)
 
 

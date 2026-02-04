@@ -88,9 +88,14 @@ def get_avg_range_at_angle(scan: LaserScan, angle_deg: float, window_deg: float 
 
     return avg_range, window_ranges
 
-def get_min_range_at_angle(scan: LaserScan, angle_deg: float, window_deg: float = 2.0):
+def get_min_range_at_angle(scan: LaserScan, angle_deg: float, window_deg: float = 2.0, min_range_filter: float = 0.0):
     """
     Compute the minimum valid range in ±window_deg around the given angle (in degrees).
+    Args:
+        scan: LaserScan message
+        angle_deg: target angle in degrees
+        window_deg: angular window width
+        min_range_filter: minimum range threshold to filter self-occlusion (default 0.0 = disabled)
     Returns:
         (min_range, (idx_min, idx_max), window_ranges)
     where:
@@ -115,12 +120,13 @@ def get_min_range_at_angle(scan: LaserScan, angle_deg: float, window_deg: float 
         # Window crosses 0° boundary
         indices = list(range(idx_n, n)) + list(range(0, idx_p + 1))
 
-    # Extract valid ranges
+    # Extract valid ranges, applying min_range_filter
     window_ranges = []
     valid_values = []
     for i in indices:
         r = scan.ranges[i]
-        if math.isfinite(r) and scan.range_min <= r <= scan.range_max:
+        # Apply filtering: range must be finite, within scanner limits, AND above min_range_filter
+        if math.isfinite(r) and scan.range_min <= r <= scan.range_max and r >= min_range_filter:
             window_ranges.append((i, r))
             valid_values.append(r)
         else:

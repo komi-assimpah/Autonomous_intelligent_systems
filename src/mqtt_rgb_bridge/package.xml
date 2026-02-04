@@ -1,0 +1,18 @@
+<package format="3">
+  <name>mqtt_rgb_bridge</name>
+  <version>0.0.0</version>
+  <description>RGB Realsense Publisher</description>
+  <maintainer email="ros@todo.todo">ros</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>cv_bridge</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
+

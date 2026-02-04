@@ -16,6 +16,8 @@ setup(
           'launch/pc.launch.py']),
         ('share/' + package_name + '/rviz',
          ['rviz/real_robot_exploration.rviz']),
+        ('share/' + package_name + '/config',
+         ['config/realsense_color_only.yaml']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

@@ -22,7 +22,7 @@ class Inference(Node):
         self.mask_pub_ = self.create_publisher(Image, '/object/segmentation_mask', 10)
         self.class_pub_ = self.create_publisher(String, '/object/class_name', 10)
 
-        self.subscription = self.create_subscription(Image, '/processed/camera_feed', self.image_callback, 10)
+        self.subscription = self.create_subscription(Image, '/camera/image_decompressed', self.image_callback, 10)
         
         self.br = CvBridge()
 

@@ -30,6 +30,7 @@ setup(
         'console_scripts': [
             'navigation_node = object_search_navigation.navigation_node:main',
             'camera_processor_node = object_search_navigation.camera_processor_node:main',
+            'image_decompressor_node = object_search_navigation.image_decompressor_node:main',
             'mapping_node = object_search_navigation.mapping_node:main',
         ], 
     },

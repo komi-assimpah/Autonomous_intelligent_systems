@@ -1,0 +1,27 @@
+/camera/realsense:
+  ros__parameters:
+    enable_color: true
+    enable_depth: true
+    enable_infra1: false
+    enable_infra2: false
+    enable_gyro: false
+    enable_accel: false
+    enable_sync: true
+    enable_rgbd: false
+    enable_pointcloud: true
+    
+    # RGB settings
+    rgb_camera.profile: "424x240x15"
+    rgb_camera.power_line_frequency: 1
+    
+    # Depth settings (low res for performance)
+    depth_module.profile: "424x240x15"
+    depth_module.enable_auto_exposure: true
+    
+    # PointCloud settings
+    pointcloud.enable: true
+    pointcloud.stream_filter: 2  # 2 = color
+    pointcloud.stream_index_filter: 0
+    
+    # Align depth to color for better pointcloud
+    align_depth.enable: true

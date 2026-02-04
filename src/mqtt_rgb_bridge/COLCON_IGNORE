@@ -1,0 +1,2 @@
+# Ignore mqtt_rgb_bridge on PC (requires RealSense hardware)
+mqtt_rgb_bridge

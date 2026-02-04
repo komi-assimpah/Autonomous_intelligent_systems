@@ -1,0 +1,12 @@
+/camera/realsense:
+  ros__parameters:
+    enable_color: true
+    enable_depth: false
+    enable_infra1: false
+    enable_infra2: false
+    enable_gyro: false
+    enable_accel: false
+    enable_sync: false
+    enable_rgbd: false
+    rgb_camera.profile: "640x480x15"
+    rgb_camera.power_line_frequency: 1

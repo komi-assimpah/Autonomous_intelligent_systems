@@ -38,6 +38,20 @@ def generate_launch_description():
         use_rviz_arg,
         cartographer_launch,
         
+        # Image decompressor: receives compressed JPEG from robot
+        Node(
+            package='object_search_navigation',
+            executable='image_decompressor_node',
+            name='image_decompressor',
+            output='screen',
+            parameters=[{
+                'use_sim_time': False,
+                'image_topic': '/camera/rgb/image_compressed',
+                'show_window': True,
+                'window_name': 'Robot Camera Feed'
+            }]
+        ),
+        
         Node(
             package='ia_package',
             executable='inference',
@@ -49,13 +63,6 @@ def generate_launch_description():
             }]
         ),
         
-        Node(
-            package='ia_package',
-            executable='pointcloud_visualizer',
-            name='pointcloud_visualizer',
-            output='screen',
-            parameters=[{'use_sim_time': False}]
-        ),
         
         # RViz with custom config for real robot exploration
         Node(

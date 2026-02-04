@@ -15,29 +15,35 @@ def generate_launch_description():
         )
     )
     
+    robot_orchestrator_dir = get_package_share_directory('robot_orchestrator')
+    realsense_config = os.path.join(robot_orchestrator_dir, 'config', 'realsense_color_only.yaml')
+    
     realsense_node = Node(
         package='realsense2_camera',
         executable='realsense2_camera_node',
         name='realsense',
-        namespace='camera',  # Topic will be /camera/color/image_raw
+        namespace='camera',
         output='screen',
-        parameters=[{
-            'enable_color': True,
-            'enable_depth': False,  # Disable depth to reduce USB load
-            'enable_infra1': False,
-            'enable_infra2': False,
-            'enable_gyro': False,   # Disable IMU - permission issues
-            'enable_accel': False,  # Disable IMU - permission issues
-            'color_width': 640,
-            'color_height': 480,
-            'color_fps': 15,
-        }]
+        parameters=[realsense_config]
     )
     
     return LaunchDescription([
         robot_bringup,
         
-        realsense_node,
+        Node(
+            package='mqtt_rgb_bridge',
+            executable='rgb_publisher',
+            name='realsense_rgb_publisher',
+            output='screen',
+            parameters=[{
+                'width': 424,
+                'height': 240,
+                'fps': 15,
+                'jpeg_quality': 50,
+                'enable_depth': False,
+                'topic': '/camera/rgb/image_compressed'
+            }]
+        ),
         
         Node(
             package='robot_orchestrator',
@@ -54,13 +60,4 @@ def generate_launch_description():
             output='screen',
             parameters=[{'use_sim_time': False}]
         ),
-        
-        Node(
-            package='object_search_navigation',
-            executable='camera_processor_node',
-            name='camera_processor_node',
-            output='screen',
-            parameters=[{'use_sim_time': False}]
-        ),
     ])
-

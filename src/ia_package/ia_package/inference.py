@@ -7,7 +7,11 @@ from cv_bridge import CvBridge
 import cv2
 import numpy as np
 from ultralytics import YOLO
+from tf2_ros import Buffer, TransformListener
+import tf2_geometry_msgs
 
+
+from visualization_msgs.msg import Marker
 
 class Inference(Node):
     
@@ -23,6 +27,7 @@ class Inference(Node):
         self.mask_pub_ = self.create_publisher(Image, '/object/segmentation_mask', 10)
         self.class_pub_ = self.create_publisher(String, '/object/class_name', 10)
         self.position_pub_ = self.create_publisher(PointStamped, '/object/position', 10)
+        self.marker_pub_ = self.create_publisher(Marker, '/object/marker', 10)
 
         self.rgb_sub = self.create_subscription(Image, '/camera/image_decompressed', self.image_callback, 10)
         self.depth_sub = self.create_subscription(Image, '/camera/depth/image_raw', self.depth_callback, 10)
@@ -30,6 +35,10 @@ class Inference(Node):
         self.latest_depth = None
         
         self.br = CvBridge()
+        
+        # TF2 for coordinate transforms
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
         model_path = self.get_parameter('model_path').value
         self.conf_threshold = float(self.get_parameter('conf_threshold').value)
@@ -138,14 +147,61 @@ class Inference(Node):
                 
                 # Compute 3D position once
                 if not self.position_computed:
-                    position_3d = self.compute_3d_position(bbox, mask)
-                    if position_3d is not None:
-                        self.position_pub_.publish(position_3d)
-                        self.position_computed = True
-                        self.get_logger().info(
-                            f'Position 3D: x={position_3d.point.x:.2f}m, '
-                            f'y={position_3d.point.y:.2f}m, z={position_3d.point.z:.2f}m'
-                        )
+                    position_3d_camera = self.compute_3d_position(bbox, mask)
+                    if position_3d_camera is not None:
+                        # Transform to map frame
+                        position_3d_map = self.transform_to_map(position_3d_camera)
+                        if position_3d_map is not None:
+                            self.position_pub_.publish(position_3d_camera)  # Still publish camera frame for navigation
+                            self.publish_marker(position_3d_map)  # Marker in map frame
+                            self.position_computed = True
+                            self.get_logger().info(
+                                f'Position 3D (camera): x={position_3d_camera.point.x:.2f}m, '
+                                f'y={position_3d_camera.point.y:.2f}m, z={position_3d_camera.point.z:.2f}m'
+                            )
+                            self.get_logger().info(
+                                f'Position 3D (map): x={position_3d_map.point.x:.2f}m, '
+                                f'y={position_3d_map.point.y:.2f}m, z={position_3d_map.point.z:.2f}m'
+                            )
+
+    def transform_to_map(self, point_camera):
+        """Transform PointStamped from camera_link to map frame"""
+        try:
+            transform = self.tf_buffer.lookup_transform(
+                'map',
+                point_camera.header.frame_id,
+                rclpy.time.Time(),
+                timeout=rclpy.duration.Duration(seconds=1.0)
+            )
+            
+            # Transform the point
+            point_map = tf2_geometry_msgs.do_transform_point(point_camera, transform)
+            return point_map
+            
+        except Exception as e:
+            self.get_logger().warn(f'Transform failed: {e}')
+            return None
+    
+    def publish_marker(self, point_msg):
+        marker = Marker()
+        marker.header = point_msg.header
+        marker.ns = "object_detection"
+        marker.id = 0
+        marker.type = Marker.SPHERE
+        marker.action = Marker.ADD
+        marker.pose.position.x = point_msg.point.x
+        marker.pose.position.y = point_msg.point.y
+        marker.pose.position.z = point_msg.point.z
+        marker.pose.orientation.w = 1.0
+        marker.scale.x = 0.2
+        marker.scale.y = 0.2
+        marker.scale.z = 0.2
+        marker.color.a = 1.0
+        marker.color.r = 0.0
+        marker.color.g = 0.0
+        marker.color.b = 1.0  # Blue
+        marker.lifetime = rclpy.duration.Duration(seconds=0).to_msg() # Forever
+        self.marker_pub_.publish(marker)
 
     def run_inference(self, frame):
         """

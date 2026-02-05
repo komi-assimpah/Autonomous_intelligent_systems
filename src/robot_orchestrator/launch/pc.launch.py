@@ -29,7 +29,8 @@ def generate_launch_description():
             os.path.join(turtlebot3_cartographer_dir, 'launch', 'cartographer.launch.py')
         ),
         launch_arguments={
-            'use_sim_time': 'false'
+            'use_sim_time': 'false',
+            'use_rviz': 'false'
         }.items()
     )
     
@@ -64,7 +65,7 @@ def generate_launch_description():
             }]
         ),
         
-        # PointCloud Visualizer: DISABLED (inference.py now does direct 3D calc)
+        # DISABLED (inference.py now does direct 3D calc for the demon on the real robot)
         # Node(
         #     package='ia_package',
         #     executable='pointcloud_visualizer',
@@ -82,8 +83,7 @@ def generate_launch_description():
             arguments=['-d', os.path.join(
                 robot_orchestrator_dir,
                 'rviz', 'real_robot_exploration.rviz'
-            )],
-            condition=IfCondition(LaunchConfiguration('use_rviz'))
+            )]
         ),
     ])
 

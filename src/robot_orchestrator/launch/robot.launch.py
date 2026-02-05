@@ -39,7 +39,7 @@ def generate_launch_description():
             parameters=[{
                 'width': 424,
                 'height': 240,
-                'fps': 6,
+                'fps': 4,
                 'jpeg_quality': 50,
                 'depth_quality': 1,
                 'topic': '/camera/rgbd/compressed'
@@ -52,6 +52,16 @@ def generate_launch_description():
             name='robot_orchestrator',
             output='screen',
             parameters=[{'use_sim_time': False}]
+        ),
+        
+        # Camera TF: base_link -> camera_link 
+        # Position: 5cm forward, 12cm up (matches D435i URDF)
+        # Rotation: Roll=-90°, Pitch=0°, Yaw=-90° (RealSense optical frame)
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='camera_tf_broadcaster',
+            arguments=['0.05', '0', '0.12', '-1.5708', '0', '-1.5708', 'base_link', 'camera_link']
         ),
         
         Node(

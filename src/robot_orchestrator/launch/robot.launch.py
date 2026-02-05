@@ -39,20 +39,20 @@ def generate_launch_description():
             parameters=[{
                 'width': 424,
                 'height': 240,
-                'fps': 4,
+                'fps': 6,
                 'jpeg_quality': 50,
                 'depth_quality': 1,
                 'topic': '/camera/rgbd/compressed'
             }]
         ),
         
-        Node(
-            package='robot_orchestrator',
-            executable='fsm_node',
-            name='robot_orchestrator',
-            output='screen',
-            parameters=[{'use_sim_time': False}]
-        ),
+        # Node(
+        #     package='robot_orchestrator',
+        #     executable='fsm_node',
+        #     name='robot_orchestrator',
+        #     output='screen',
+        #     parameters=[{'use_sim_time': False}]
+        # ),
         
         # Camera TF: base_link -> camera_link 
         # Position: 5cm forward, 12cm up (matches D435i URDF)
@@ -64,11 +64,11 @@ def generate_launch_description():
             arguments=['0.05', '0', '0.12', '-1.5708', '0', '-1.5708', 'base_link', 'camera_link']
         ),
         
-        Node(
-            package='object_search_navigation',
-            executable='navigation_node',
-            name='navigation_node',
-            output='screen',
-            parameters=[{'use_sim_time': False}]
-        ),
+        # Node(
+        #     package='object_search_navigation',
+        #     executable='navigation_node',
+        #     name='navigation_node',
+        #     output='screen',
+        #     parameters=[{'use_sim_time': False}]
+        # ),
     ])

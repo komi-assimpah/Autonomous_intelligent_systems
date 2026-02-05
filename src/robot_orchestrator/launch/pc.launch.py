@@ -65,6 +65,22 @@ def generate_launch_description():
             }]
         ),
         
+        Node(
+            package='robot_orchestrator',
+            executable='fsm_node',
+            name='robot_orchestrator',
+            output='screen',
+            parameters=[{'use_sim_time': False}]
+        ),
+        
+        Node(
+            package='object_search_navigation',
+            executable='navigation_node',
+            name='navigation_node',
+            output='screen',
+            parameters=[{'use_sim_time': False}]
+        ),
+        
         # DISABLED (inference.py now does direct 3D calc for the demon on the real robot)
         # Node(
         #     package='ia_package',

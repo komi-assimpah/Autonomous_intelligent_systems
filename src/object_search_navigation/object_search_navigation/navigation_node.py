@@ -33,8 +33,8 @@ class NavigationNode(Node):
         self.state = self.WAITING
 
         # === Speed Parameters ===
-        self.SPEED_LINEAR_MAX = 0.2       
-        self.SPEED_LINEAR_MIN = 0.15      
+        self.SPEED_LINEAR_MAX = 0.15       
+        self.SPEED_LINEAR_MIN = 0.08      
         self.SPEED_ANGULAR_MAX = 0.15      
         self.Kp_ANGULAR = 2.0              
         

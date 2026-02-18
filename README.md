@@ -11,6 +11,18 @@ The robot combines **Autonomous Exploration** and **Artificial Intelligence**.
 
 ---
 
+## Demo
+
+### Simulation (Gazebo)
+
+https://github.com/user-attachments/assets/e30b7e66-7e7c-4ef7-87e6-9b69fa4d1f27
+
+
+### Real Robot (TurtleBot3 + RealSense D435i)
+
+https://github.com/user-attachments/assets/615636e4-f5b3-47b4-b831-d4f9e559c1b3
+
+
 ## System Architecture
 The system relies on 3 ROS 2 Packages:
 

@@ -11,7 +11,7 @@ class RobotOrchestrator(Node):
 
         self.target_detected = False
         
-        self.declare_parameter('localization_wait_time', 5)  # seconds
+        self.declare_parameter('localization_wait_time', 0)  # seconds
         self.localization_wait_time = self.get_parameter('localization_wait_time').value
         self.localization_start_time = None
 

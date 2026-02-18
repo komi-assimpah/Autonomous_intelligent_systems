@@ -232,9 +232,119 @@ If the object is not supported by the search model, an error will appear in the 
 
 ---
 
-## Real Robot Installation (TurtleBot3)
+## Real Robot Deployment (TurtleBot3 Burger + RealSense D435i)
 
-> **Note**: This section is currently under validation.
+> [!IMPORTANT]
+> **Use the `demo-real` branch**, the `main` branch targets Gazebo simulation.
+> The real-hardware code has been specifically adapted and validated on this branch.
+> ```bash
+> git checkout demo-real
+> ```
+
+> [!NOTE]
+> The architecture is **split** for performance: the **Raspberry Pi** (on the robot) handles hardware drivers only, while the **PC** runs all intelligence (navigation, detection, mapping).
+> 
+> The `realsense2_camera` ROS package is **not required** on the PC — the robot streams a compressed RGB-D feed over WiFi via `mqtt_rgb_bridge`, which is decoded on the PC side.
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────┐     WiFi (ROS 2 DDS)       ┌──────────────────────────────────────┐
+│         ROBOT (RPi 4)           │ ◄───────────────────────►  │              PC                      │
+│                                 │                            │                                      │
+│  • TurtleBot3 drivers (motors)  │  /scan, /odom, /tf         │  • Cartographer (SLAM)               │
+│  • LiDAR (LDS-02)               │  /camera/rgbd/compressed ► │  • Image Decompressor                │
+│  • RealSense D435i (6 FPS)      │                            │  • YOLO Inference (object detection) │
+│  • Static TF (camera_link)      │  ◄── /cmd_vel              │  • Navigation Node (exploration)     │
+│                                 │                            │  • FSM Orchestrator (state machine)  │
+└─────────────────────────────────┘                            │  • RViz2 (visualization)             │
+                                                               └──────────────────────────────────────┘
+```
+
+### Prerequisites
+
+#### On the PC
+Same as the simulation setup (ROS 2 Humble, Python deps, colcon build). Additionally set:
+
+```bash
+export ROS_DOMAIN_ID=1
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export TURTLEBOT3_MODEL=burger
+```
+
+Add to `~/.bashrc` for persistence:
+```bash
+echo 'export ROS_DOMAIN_ID=1' >> ~/.bashrc
+echo 'export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp' >> ~/.bashrc
+echo 'export TURTLEBOT3_MODEL=burger' >> ~/.bashrc
+```
+
+#### On the Robot (TurtleBot3)
+The robot must have the `robot_orchestrator` and `mqtt_rgb_bridge` packages built in `~/groupe7_ws`:
+
+```bash
+# On the robot
+cd ~/groupe7_ws
+colcon build --symlink-install
+source install/setup.bash
+```
+
+Ensure the robot's `~/.bashrc` contains:
+```bash
+export ROS_DOMAIN_ID=1
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export TURTLEBOT3_MODEL=burger
+```
+
+### Hardware Setup
+- Connect the **RealSense D435i** to the Raspberry Pi via **USB 3.0** port.
+- Verify detection: `lsusb | grep Intel` should show `Intel Corp. Intel(R) RealSense(TM) Depth Camera 435i`.
+- Ensure the robot and PC are on the **same WiFi network**.
+
+### Launch Procedure
+
+#### Step 1 — On the Robot
+```bash
+# SSH into the robot
+ssh turtlebot1@<ROBOT_IP>
+
+# Launch hardware drivers only (lightweight)
+ros2 launch robot_orchestrator robot.launch.py
+```
+
+Expected output (no errors):
+```
+[turtlebot3_ros]: Run!
+[realsense_rgbd_publisher]: ✅ RealSense RGB-D Packed Publisher started: /camera/rgbd/compressed (424x240 @ 6fps)
+[camera_tf_broadcaster]: Spinning until stopped - publishing transform
+```
+
+#### Step 2 — On the PC
+```bash
+colcon build && source install/setup.bash
+
+# Launch all intelligence (SLAM + Detection + Navigation + RViz)
+ros2 launch robot_orchestrator pc.launch.py target_class:=<TARGET>
+```
+
+Replace `<TARGET>` with any COCO class name. Examples:
+```bash
+ros2 launch robot_orchestrator pc.launch.py target_class:=chair
+ros2 launch robot_orchestrator pc.launch.py target_class:=person
+ros2 launch robot_orchestrator pc.launch.py target_class:=dog
+```
+
+The robot will autonomously explore the environment, detect the target, and stop when found, displaying the target in the rviz with a marker.
+
+### Troubleshooting
+
+#### RealSense fails to start (`Couldn't resolve requests`)
+The camera only supports specific framerates: **6, 15, 30, 60 FPS**. Do not use values like 4 or 5.
+
+#### Robot doesn't move
+- Confirm `turtlebot3_ros` is running without errors on the robot.
+- Confirm the PC can see robot topics: `ros2 topic list | grep scan`
+- Check `ROS_DOMAIN_ID` matches on both machines.
 
 ---
 
